@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Livery AI Studio</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="app">
+    <!-- ─── Top Bar ─────────────────────────────────────────────────────── -->
+    <header class="topbar" id="appTopbar">
+      <div class="topbar-left">
+        <span class="topbar-logo-text">Livery Gen AI</span>
+      </div>
+      <nav class="topbar-nav">
+        <button class="topbar-nav-item active" data-tab="generate">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          Generate
+        </button>
+        <button class="topbar-nav-item" data-tab="history">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          History
+        </button>
+        <button class="topbar-nav-item" data-tab="upscale">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          Upscale
+        </button>
+        <button class="topbar-nav-item fade-out" data-tab="sponsors" style="opacity: 0.5; cursor: not-allowed;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+          Sponsors <span style="font-size: 10px; margin-left: 4px;">(soon)</span>
+        </button>
+        <button class="topbar-nav-item fade-out" data-tab="specular" style="opacity: 0.5; cursor: not-allowed;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="5" r="1"/><circle cx="5" cy="19" r="1"/><path d="M12 1v6M12 17v6M1 12h6M17 12h6M5.64 5.64l4.24 4.24M14.12 14.12l4.24 4.24M5.64 18.36l4.24-4.24M14.12 9.88l4.24-4.24"/></svg>
+          Specular <span style="font-size: 10px; margin-left: 4px;">(soon)</span>
+        </button>
+        <button class="topbar-nav-item" data-tab="settings">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Settings
+        </button>
+      </nav>
+      <div class="topbar-right">
+        <div class="topbar-meta">
+          <a class="gemini-console-link" id="geminiConsoleLink" onclick="openExternal('https://aistudio.google.com')" title="Open Gemini Console">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            <span>Google AI Studio</span>
+          </a>
+          <div class="spending-summary" id="spendingSummary" title="Estimated API spending" onclick="openSpendingModal()">
+            <svg class="spending-icon-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            <span class="spending-amount" id="spendingAmount">$0.00</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ─── Sub Bar (car selector + iRacing ops) ────────────────────────── -->
+    <div class="subbar">
+      <div class="subbar-center">
+        <span class="subbar-label">Car</span>
+        <!-- Hidden native select kept so all JS .value reads work unchanged -->
+        <select id="carSelect" style="display:none"><option value="">Select a car…</option></select>
+        <!-- Custom car picker -->
+        <div class="car-picker" id="carPicker">
+          <button class="car-picker-trigger" id="carPickerTrigger" type="button" onclick="carPickerToggle()">
+            <span class="car-picker-wire" id="carPickerWire"></span>
+            <span class="car-picker-label" id="carPickerLabel">Select a car…</span>
+            <svg class="car-picker-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="car-picker-dropdown" id="carPickerDropdown" style="display:none">
+            <div class="car-picker-search-row">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input class="car-picker-search" id="carPickerSearch" placeholder="Search cars…" oninput="carPickerFilter()" autocomplete="off">
+            </div>
+            <div id="carPickerRecents" class="car-picker-recents" style="display:none"></div>
+            <div class="car-picker-list" id="carPickerList"></div>
+          </div>
+        </div>
+      </div>
+      <div class="subbar-right">
+        <span class="subbar-label">iRacing Paint</span>
+        <button class="btn-clear-paint" onclick="clearIRacingPaint('texture')" title="Delete car texture from iRacing paint folder">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          Clear Texture
+        </button>
+        <button class="btn-clear-paint" onclick="clearIRacingPaint('spec')" title="Delete spec map from iRacing paint folder">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          Clear Spec
+        </button>
+      </div>
+    </div>
+
+    <!-- ─── Body (content) ───────────────────────────────────────────── -->
+    <div class="app-body">
+
+    <!-- ─── Main Content ───────────────────────────────────────────── -->
+    <main class="content">
+
+      <!-- ═══ Generate Tab ═══ -->
+      <section class="tab-panel active" id="tab-generate">
+        <header class="panel-header">
+          <h1>Create a Livery</h1>
+          <p class="subtitle">Describe your design</p>
+        </header>
+
+        <!-- No-car placeholder -->
+        <div class="no-car-placeholder" id="noCarPlaceholder" style="display:none">
+          <div class="no-car-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.25"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v4h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+          </div>
+          <p class="no-car-title">No car selected</p>
+          <p class="no-car-hint">Pick a car from the <strong>Car</strong> selector in the top bar to get started.</p>
+        </div>
+
+        <div class="generate-layout" id="generateLayout">
+          <!-- Left: Form -->
+          <div class="form-col">
+            <!-- Mode toggle -->
+            <div class="mode-toggle" id="modeToggle">
+              <button class="mode-btn active" data-mode="new" onclick="setMode('new')" type="button">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                New Livery
+              </button>
+              <button class="mode-btn" data-mode="modify" onclick="setMode('modify')" type="button">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Modify
+              </button>
+            </div>
+
+            <!-- Context (prepended to prompt) -->
+            <div class="field">
+              <label for="context">Context <span class="hint">(prepended to your prompt)</span></label>
+              <textarea id="context" rows="2" placeholder="e.g. iRacing GTR, professional racing series, high-quality textures..."></textarea>
+            </div>
+
+            <!-- Prompt -->
+            <div class="field">
+              <div class="prompt-label-row">
+                <label for="prompt">Livery Description</label>
+                <div class="prompt-label-actions">
+                  <button class="sample-btn enhance-btn" id="enhanceBtn" onclick="enhancePrompt()" type="button" title="AI-enhance your prompt for better results">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    <span>Enhance</span>
+                  </button>
+                  <button class="sample-btn" id="historyBtn" onclick="openPromptHistoryModal()" type="button" title="Browse recently submitted prompts">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <span>History</span>
+                  </button>
+                  <button class="sample-btn" id="sampleBtn" onclick="openSamplesModal(event)" type="button">◆ <span id="sampleBtnLabel">New Livery Ideas</span></button>
+                </div>
+              </div>
+              <textarea id="prompt" rows="4" placeholder="e.g. Gulf Racing livery, pastel blue lower body, orange hood and roof, white number 7 on both doors, thin white pinstripe separating colours..."></textarea>
+            </div>
+
+            <!-- Wireframe & Base Texture upload squares -->
+            <div class="upload-squares-row">
+              <!-- Wireframe is managed automatically by the selected car — hidden from UI -->
+              <div id="wireframeSquareWrapper" style="display:none;position:absolute;pointer-events:none;visibility:hidden;">
+              <div class="upload-square-wrapper">
+                <div class="upload-square" id="wireframeSquare"
+                     onclick="pickFile('wireframe')"
+                     ondragover="event.preventDefault(); this.classList.add('drag-over')"
+                     ondragleave="this.classList.remove('drag-over')"
+                     ondrop="handleUploadDrop(event, 'wireframe')">
+                  <div class="upload-square-empty" id="wireframeSquareEmpty">
+                    <span class="upload-square-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.45"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg></span>
+                    <span class="upload-square-label">UV Wireframe</span>
+                    <span class="upload-square-hint">Click or drag & drop</span>
+                  </div>
+                  <img class="upload-square-img" id="wireframeSquareImg" style="display:none" alt="Wireframe">
+                  <div class="upload-square-badge" id="wireframeSquareBadge" style="display:none">Wireframe</div>
+                  <button class="upload-square-clear" id="wireframeClearBtn" onclick="event.stopPropagation(); clearUploadSquare('wireframe')" style="display:none" title="Remove">&times;</button>
+                </div>
+                <div class="upload-buttons-row">
+                  <button class="browse-upload-btn" onclick="openBrowseModal('wire')" type="button" title="Browse previously uploaded wireframes">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                    Browse
+                  </button>
+                  <button class="browse-upload-btn" id="wireframeCopyBtn" onclick="copySourceImage('wireframe')" type="button" title="Copy wireframe to clipboard" style="display:none">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    Copy
+                  </button>
+                  <button class="browse-upload-btn" id="wireframeDownloadBtn" onclick="downloadSourceImage('wireframe')" type="button" title="Download wireframe" style="display:none">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Download
+                  </button>
+                </div>
+              </div>
+              </div><!-- /#wireframeSquareWrapper -->
+
+              <!-- Base Texture (larger, with buttons in header) -->
+              <div class="base-texture-wrapper">
+                <div class="base-texture-header">
+                  <span class="upload-square-label">Base Texture <span class="optional">(optional)</span></span>
+                  <div class="base-texture-actions">
+                    <button class="browse-upload-btn" onclick="openBrowseModal('base')" type="button" title="Browse previously uploaded base textures">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                      Browse
+                    </button>
+                    <button class="browse-upload-btn" id="baseCopyBtn" onclick="copySourceImage('base')" type="button" title="Copy base texture to clipboard" style="display:none">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                      Copy
+                    </button>
+                    <button class="browse-upload-btn" id="baseDownloadBtn" onclick="downloadSourceImage('base')" type="button" title="Download base texture" style="display:none">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                      Download
+                    </button>
+                  </div>
+                </div>
+                <div class="upload-square" id="baseSquare"
+                     onclick="pickFile('base')"
+                     ondragover="event.preventDefault(); this.classList.add('drag-over')"
+                     ondragleave="this.classList.remove('drag-over')"
+                     ondrop="handleUploadDrop(event, 'base')">
+                  <div class="upload-square-empty" id="baseSquareEmpty">
+                    <span class="upload-square-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.45"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span>
+                    <span class="upload-square-label">Click or drag & drop</span>
+                  </div>
+                  <img class="upload-square-img" id="baseSquareImg" style="display:none" alt="Base texture">
+                  <div class="upload-square-badge" id="baseSquareBadge" style="display:none">Base</div>
+                  <button class="upload-square-clear" id="baseClearBtn" onclick="event.stopPropagation(); clearUploadSquare('base')" style="display:none" title="Remove">&times;</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Reference images (multi-select) -->
+            <div class="reference-section">
+              <div class="reference-header">
+                <span class="upload-square-label" style="font-size:12px">Reference Images <span class="optional">(optional)</span></span>
+                <div class="reference-actions">
+                  <button class="browse-upload-btn" onclick="openBrowseModal('reference')" type="button" title="Browse previously uploaded references">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                    Browse
+                  </button>
+                </div>
+              </div>
+              <div class="reference-grid" id="referenceGrid">
+                <!-- Populated dynamically — each reference thumb + an "add" card -->
+              </div>
+            </div>
+
+            <!-- Reference context (shown when at least one reference is set) -->
+            <div class="field" id="referenceContextField" style="display:none">
+              <label for="referenceContext">Reference Context <span class="optional">(what should the AI take from these images?)</span></label>
+              <textarea id="referenceContext" rows="2" placeholder="e.g. Use the colour scheme from this livery, match the stripe placement, inspired by this real car…"></textarea>
+            </div>
+
+            <!-- Settings Row: Model, Resolution, Upscale, Auto-Deploy -->
+            <div class="field-row settings-row">
+              <!-- Flash/Pro Model Selector -->
+              <div class="model-selector">
+                <button class="model-btn model-btn-flash" id="flashBtn" onclick="selectModel('flash')" title="Fast & cheaper: $0.067-$0.101 per image">Flash</button>
+                <button class="model-btn model-btn-pro active" id="proBtn" onclick="selectModel('pro')" title="High fidelity: $0.134 per image">Pro</button>
+              </div>
+
+              <!-- Resolution Toggle (Flash only) -->
+              <label class="toggle-label" id="resolutionToggleLabel" style="display:none;">
+                <input type="checkbox" id="resolution2K" checked onchange="updatePricingDisplay()">
+                <span class="toggle-switch"></span>
+                <span>2K Resolution</span>
+              </label>
+
+              <!-- Upscale Toggle (Flash + 1K only) -->
+              <label class="toggle-label" id="upscaleToggleLabel" style="display:none;">
+                <input type="checkbox" id="upscaleResult">
+                <span class="toggle-switch"></span>
+                <span>GPU Upscale <span class="upscale-hint" id="upscaleHint">requires NVIDIA GPU</span></span>
+              </label>
+
+              <!-- Auto-Deploy -->
+              <label class="toggle-label">
+                <input type="checkbox" id="autoDeploy" checked>
+                <span class="toggle-switch"></span>
+                <span>Auto-deploy to iRacing</span>
+              </label>
+            </div>
+
+            <!-- Pricing display + Generate button (combined row) -->
+            <div class="pricing-generate-row">
+              <div class="pricing-display" id="pricingDisplay">
+                <div class="pricing-item">
+                  <span class="pricing-label">Model</span>
+                  <span class="pricing-value" id="pricingModel">Pro ($0.134)</span>
+                </div>
+                <div class="pricing-item">
+                  <span class="pricing-label">Resolution</span>
+                  <span class="pricing-value" id="pricingResolution">—</span>
+                </div>
+                <div class="pricing-item pricing-item-total">
+                  <span class="pricing-label">Est. Cost</span>
+                  <span class="pricing-value" id="pricingTotal">$0.134</span>
+                </div>
+              </div>
+              <button class="btn-generate" id="btnGenerate" onclick="generate()">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                <span class="btn-text">Generate</span>
+                <span class="btn-spinner" style="display:none"></span>
+              </button>
+            </div>
+
+            <!-- Status -->
+            <div class="status-bar" id="statusBar" style="display:none">
+              <span class="status-icon"></span>
+              <span class="status-text"></span>
+            </div>
+
+          </div>
+
+          <!-- Right: Preview -->
+          <div class="preview-col">
+            <div class="preview-card" id="previewCard" onmouseenter="showPreviewActions()" onmouseleave="hidePreviewActions()">
+              <div class="preview-empty" id="previewEmpty">
+                <div class="preview-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>
+                <p>Your livery preview<br>will appear here</p>
+              </div>
+              <div class="preview-zoom-container" id="previewZoomContainer">
+                <img id="previewImg" class="preview-img" style="display:none" alt="Generated livery preview">
+              </div>
+              <div class="preview-zoom-controls" id="previewZoomControls" style="display:none">
+                <button class="zoom-btn" onclick="previewZoomIn()" title="Zoom in"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg></button>
+                <button class="zoom-btn" onclick="previewZoomOut()" title="Zoom out"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg></button>
+                <button class="zoom-btn" onclick="previewZoomReset()" title="Reset zoom"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg></button>
+              </div>
+              <!-- Hover action tray -->
+              <div class="preview-actions" id="previewActions" style="display:none">
+                <button class="tray-btn" id="copyPreviewBtn" onclick="copyPreviewToClipboard()" title="Copy to clipboard">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                </button>
+                <button class="tray-btn" id="downloadPreviewBtn" onclick="downloadPreview()" title="Download">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </button>
+                <button class="tray-btn" id="deployPreviewBtn" onclick="deployCurrentPreview()" title="Load in iRacing">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                </button>
+                <button class="tray-btn" onclick="openInExplorer(lastGeneratedPath)" title="Show in Explorer">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                </button>
+              </div>
+            </div>
+            <!-- Preview post-generate actions -->
+            <div class="preview-post-actions" id="previewPostActions" style="display:none">
+              <!-- Shown in "new" mode: quick switch to modify -->
+              <button class="btn-post-action btn-post-modify" id="btnPostModify" onclick="modifyFromPreview()" title="Switch to modify mode with this result as base">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Modify This
+              </button>
+              <!-- Shown in "modify" mode: set base + iterate toggle + model/deployed badges -->
+              <div class="preview-modify-controls" id="previewModifyControls" style="display:none">
+                <div class="preview-modify-header">
+                  <div class="preview-info-badges" id="previewInfoBadges">
+                    <div class="info-chip"><span class="info-label">Model</span><span class="info-value" id="infoModel">—</span></div>
+                    <div class="info-chip"><span class="info-label">Deployed</span><span class="info-value" id="infoDeployed">—</span></div>
+                  </div>
+                </div>
+                <div class="preview-modify-buttons">
+                  <button class="btn-post-action btn-post-setbase" id="btnSetBase" onclick="setBaseFromPreview()" title="Load this result as the base texture">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    Set Base
+                  </button>
+                  <label class="toggle-label iterate-toggle-large" title="Auto-loads result as base after each generation for continuous refinement">
+                    <input type="checkbox" id="iterateToggle" onchange="onIterateToggleChange()">
+                    <span class="toggle-switch"></span>
+                    <span>Iterate</span>
+                  </label>
+                </div>
+              </div>
+              <p class="iterate-hint" id="iterateHint" style="display:none">Auto-loads each result as the base for the next generation</p>
+            </div>
+          </div>
+        </div><!-- /#generateLayout -->
+      </section>
+
+      <!-- ═══ History Tab ═══ -->
+      <section class="tab-panel" id="tab-history">
+        <header class="panel-header">
+          <h1>Livery History</h1>
+          <p class="subtitle">Previously generated liveries</p>
+        </header>
+        <div class="history-grid" id="historyGrid">
+          <div class="history-empty">
+            <p>No liveries generated yet.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ Upscale Tab ═══ -->
+      <section class="tab-panel" id="tab-upscale">
+        <header class="panel-header">
+          <h1>Upscale Image</h1>
+          <p class="subtitle">Real-ESRGAN GPU upscaling to 2048×2048</p>
+        </header>
+        <div class="upscale-layout">
+          <!-- Left: controls -->
+          <div class="upscale-form-col">
+            <div class="upscale-source">
+              <h3 class="upscale-section-title">Source Image</h3>
+              <div class="upscale-preview-card" id="upscaleSourceCard">
+                <div class="preview-empty" id="upscaleSourceEmpty">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  <p>Load an image from History<br>to upscale it</p>
+                </div>
+                <img id="upscaleSourceImg" class="preview-img" style="display:none" alt="Source">
+                <div class="preview-actions" id="upscaleSourceActions">
+                  <button class="tray-btn" onclick="copyUpscaleImg('source')" title="Copy">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                  </button>
+                  <button class="tray-btn" onclick="openInExplorer(upscaleSourcePath)" title="Show in Explorer">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="upscale-source-info" id="upscaleSourceInfo" style="display:none">
+                <span class="info-chip"><span class="info-label">Source</span><span class="info-value" id="upscaleSourceSize">—</span></span>
+              </div>
+            </div>
+
+            <button class="btn-generate" id="btnUpscale" onclick="runUpscale()" disabled>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              <span class="btn-text">Upscale to 2048</span>
+              <span class="btn-spinner" style="display:none"></span>
+            </button>
+            <div class="status-bar" id="upscaleStatus" style="display:none">
+              <span class="status-icon"></span>
+              <span class="status-text"></span>
+            </div>
+          </div>
+
+          <!-- Right: result -->
+          <div class="upscale-result-col">
+            <h3 class="upscale-section-title">Result</h3>
+            <div class="upscale-preview-card" id="upscaleResultCard">
+              <div class="preview-empty" id="upscaleResultEmpty">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                <p>Upscaled result<br>will appear here</p>
+              </div>
+              <img id="upscaleResultImg" class="preview-img" style="display:none" alt="Upscaled">
+              <div class="preview-actions" id="upscaleResultActions">
+                <button class="tray-btn" onclick="copyUpscaleImg('result')" title="Copy">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                </button>
+                <button class="tray-btn" onclick="downloadUpscaleResult()" title="Download">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </button>
+                <button class="tray-btn" onclick="deployUpscaled()" title="Load in iRacing">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                </button>
+                <button class="tray-btn" onclick="openInExplorer(upscaleOutputPath)" title="Show in Explorer">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="upscale-result-info" id="upscaleResultInfo" style="display:none">
+              <span class="info-chip"><span class="info-label">Output</span><span class="info-value" id="upscaleResultSize">—</span></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ Sponsors Tab ═══ -->
+      <section class="tab-panel" id="tab-sponsors">
+        <header class="panel-header">
+          <h1>Place Sponsors</h1>
+          <p class="subtitle">Intelligently position sponsor logos on an existing livery texture</p>
+        </header>
+
+        <div class="sponsors-layout">
+          <!-- Left: inputs -->
+          <div class="sponsors-form">
+
+            <!-- Base texture, Wireframe, Reference upload squares -->
+            <div class="upload-squares-row">
+              <div class="upload-square" id="sponsorsBaseSquare"
+                   onclick="pickSponsorsFile('base')"
+                   ondragover="event.preventDefault(); this.classList.add('drag-over')"
+                   ondragleave="this.classList.remove('drag-over')"
+                   ondrop="handleSponsorsUploadDrop(event, 'base')">
+                <div class="upload-square-empty" id="sponsorsBaseSquareEmpty">
+                  <span class="upload-square-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.45"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span>
+                  <span class="upload-square-label">Base Texture</span>
+                  <span class="upload-square-hint">Required · Click or drag</span>
+                </div>
+                <img class="upload-square-img" id="sponsorsBaseSquareImg" style="display:none" alt="Base texture">
+                <div class="upload-square-badge" id="sponsorsBaseSquareBadge" style="display:none">Base</div>
+                <button class="upload-square-clear" id="sponsorsBaseClearBtn" onclick="event.stopPropagation(); clearSponsorsUploadSquare('base')" style="display:none" title="Remove">&times;</button>
+              </div>
+              <div class="upload-square" id="sponsorsWireframeSquare"
+                   onclick="pickSponsorsFile('wireframe')"
+                   ondragover="event.preventDefault(); this.classList.add('drag-over')"
+                   ondragleave="this.classList.remove('drag-over')"
+                   ondrop="handleSponsorsUploadDrop(event, 'wireframe')">
+                <div class="upload-square-empty" id="sponsorsWireframeSquareEmpty">
+                  <span class="upload-square-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.45"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg></span>
+                  <span class="upload-square-label">UV Wireframe</span>
+                  <span class="upload-square-hint">Optional · Click or drag</span>
+                </div>
+                <img class="upload-square-img" id="sponsorsWireframeSquareImg" style="display:none" alt="Wireframe">
+                <div class="upload-square-badge" id="sponsorsWireframeSquareBadge" style="display:none">Wireframe</div>
+                <button class="upload-square-clear" id="sponsorsWireframeClearBtn" onclick="event.stopPropagation(); clearSponsorsUploadSquare('wireframe')" style="display:none" title="Remove">&times;</button>
+              </div>
+              <div class="upload-square" id="sponsorsRefSquare"
+                   onclick="pickSponsorsFile('reference')"
+                   ondragover="event.preventDefault(); this.classList.add('drag-over')"
+                   ondragleave="this.classList.remove('drag-over')"
+                   ondrop="handleSponsorsUploadDrop(event, 'reference')">
+                <div class="upload-square-empty" id="sponsorsRefSquareEmpty">
+                  <span class="upload-square-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.45"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+                  <span class="upload-square-label">Reference</span>
+                  <span class="upload-square-hint">Optional · Click or drag</span>
+                </div>
+                <img class="upload-square-img" id="sponsorsRefSquareImg" style="display:none" alt="Reference">
+                <div class="upload-square-badge" id="sponsorsRefSquareBadge" style="display:none">Reference</div>
+                <button class="upload-square-clear" id="sponsorsRefClearBtn" onclick="event.stopPropagation(); clearSponsorsUploadSquare('reference')" style="display:none" title="Remove">&times;</button>
+              </div>
+            </div>
+
+            <!-- Placement notes -->
+            <div class="field">
+              <div class="prompt-label-row">
+                <label for="sponsorsNotes">Placement Notes <span class="optional">(optional)</span></label>
+              </div>
+              <textarea id="sponsorsNotes" rows="3" placeholder="e.g. Place the main title sponsor large on the hood, secondary sponsors along the door sill, small logos on the rear wing end-plates…"></textarea>
+            </div>
+
+            <!-- Sponsor images -->
+            <div class="field">
+              <div class="sponsors-logos-header">
+                <label>Sponsor Logo Files</label>
+                <button class="add-car-btn" onclick="pickMultipleSponsorLogos()" type="button">+ Add logos</button>
+              </div>
+              <div class="sponsors-logos-list" id="sponsorsLogosList">
+                <p class="sponsors-logos-empty" id="sponsorsLogosEmpty">No logos added yet. Click "+ Add logos" to add PNG/JPG sponsor files.</p>
+              </div>
+            </div>
+
+            <!-- Options -->
+            <div class="field-row options-row">
+              <label class="toggle-label">
+                <input type="checkbox" id="sponsorsAutoDeploy" checked>
+                <span class="toggle-switch"></span>
+                <span>Auto-deploy to iRacing</span>
+              </label>
+              <label class="toggle-label">
+                <input type="checkbox" id="sponsorsFastMode">
+                <span class="toggle-switch"></span>
+                <span>Fast mode <span class="cost-hint">($0.04)</span></span>
+              </label>
+            </div>
+
+            <button class="btn-generate" id="btnSponsors" onclick="runSponsors()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+              <span class="btn-text">Place Sponsors</span>
+              <span class="btn-spinner" style="display:none"></span>
+            </button>
+
+            <div class="status-bar" id="sponsorsStatus" style="display:none">
+              <span class="status-icon"></span>
+              <span class="status-text"></span>
+            </div>
+          </div>
+
+          <!-- Right: preview -->
+          <div class="preview-col">
+            <div class="preview-card" id="sponsorsPreviewCard" onmouseenter="showSponsorsActions()" onmouseleave="hideSponsorsActions()">
+              <div class="preview-empty" id="sponsorsPreviewEmpty">
+                <div class="preview-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>
+                <p>Sponsored livery<br>will appear here</p>
+              </div>
+              <img id="sponsorsPreviewImg" class="preview-img" style="display:none" alt="Sponsored livery preview">
+              <div class="preview-actions" id="sponsorsPreviewActions" style="display:none">
+                <button class="tray-btn" onclick="copySponsorsPreview()" title="Copy to clipboard">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                </button>
+                <button class="tray-btn" onclick="downloadSponsorsPreview()" title="Download">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </button>
+                <button class="tray-btn" onclick="deploySponsorsPreview()" title="Load in iRacing">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                </button>
+                <button class="tray-btn" onclick="openInExplorer(sponsorsState.lastArchivePath)" title="Show in Explorer">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="preview-info" id="sponsorsPreviewInfo" style="display:none">
+              <div class="info-chip"><span class="info-label">Model</span><span class="info-value" id="sponsorsInfoModel">—</span></div>
+              <div class="info-chip"><span class="info-label">Deployed</span><span class="info-value" id="sponsorsInfoDeployed">—</span></div>
+            </div>
+
+            <!-- Logo thumbnail strip -->
+            <div class="sponsors-thumb-strip" id="sponsorsThumbStrip" style="display:none">
+              <span class="sponsors-thumb-strip-label">Logos</span>
+              <div class="sponsors-thumb-strip-inner" id="sponsorsThumbStripInner"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ Settings Tab ═══ -->
+      <section class="tab-panel" id="tab-settings">
+        <header class="panel-header">
+          <h1>Settings</h1>
+          <p class="subtitle">Configure defaults and API access</p>
+        </header>
+
+        <div class="settings-form">
+          <!-- API Key -->
+          <div class="field">
+            <label for="settingsApiKey">Gemini API Key</label>
+            <div class="api-key-row">
+              <input type="password" id="settingsApiKey" placeholder="AIzaSy…">
+              <button class="icon-btn" onclick="toggleApiKeyVisibility()" title="Show/hide key"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
+            <p class="field-hint">Key is masked when saved. Click the field to replace it. Get a key at <a href="#" onclick="openExternal('https://aistudio.google.com')">aistudio.google.com</a>.</p>
+          </div>
+
+          <!-- Customer ID -->
+          <div class="field">
+            <label for="settingsCustomerId">iRacing Customer ID</label>
+            <input type="text" id="settingsCustomerId" placeholder="Your iRacing customer ID">
+          </div>
+
+          <!-- Data folder -->
+          <div class="field" id="dataDirField">
+            <label>Data folder</label>
+            <div class="file-picker">
+              <button class="pick-btn" onclick="pickFolder('dataDir')">Choose Folder</button>
+              <span class="file-path" id="dataDirPath">Default (./data)</span>
+              <button class="clear-btn" id="dataDirClear" onclick="clearDataDir()" style="display:none">✕</button>
+            </div>
+            <p class="field-hint">Liveries and user car data are stored here. Leave blank for default.</p>
+          </div>
+
+                    <!-- ─── Your Cars ─────────────────────────────────────── -->
+          <div class="settings-section-divider"></div>
+          <h2 class="settings-section-title">Your Cars</h2>
+          <p class="field-hint">Cars appear in the car picker in the top bar. Import templates from Trading Paints template zips to get wireframe &amp; diffuse automatically.</p>
+
+          <div class="settings-cars-card">
+            <div class="settings-cars-card-summary" id="settingsCarSummaryText">No cars configured</div>
+            <button class="btn-view-cars" onclick="openCarsModal()" type="button">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+              View / Edit Cars
+            </button>
+            <div class="settings-cars-card-actions">
+              <button class="btn-cars-import" onclick="libraryPickFolder()" id="btnLibraryFolder" type="button">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                Import templates
+              </button>
+              <button class="btn-cars-import" onclick="libraryUploadZips()" id="btnLibraryZip" type="button">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Upload zip(s)
+              </button>
+              <input type="file" id="libraryZipInput" accept=".zip" multiple style="display:none" onchange="libraryHandleZipUpload(event)">
+              <button class="btn-cars-import" onclick="toggleSettingsAddCar()" id="settingsAddCarBtn" type="button">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add manually
+              </button>
+            </div>
+          </div>
+
+          <!-- Import progress panel -->
+          <div class="library-progress-panel" id="libraryProgressPanel" style="display:none">
+            <div class="library-progress-header">
+              <span id="libraryProgressTitle">Importing…</span>
+              <div class="library-progress-header-buttons">
+                <button class="library-progress-abort" onclick="libraryAbortImport()" id="libraryProgressAbort" title="Stop import">Abort</button>
+                <button class="library-progress-close" onclick="libraryCloseProgress()" id="libraryProgressClose" style="display:none">&times;</button>
+              </div>
+            </div>
+            <div class="library-log" id="libraryLog"></div>
+            <div class="library-results" id="libraryResults"></div>
+          </div>
+
+          <!-- Add car inline panel -->
+          <div class="add-car-panel" id="settingsAddCarPanel" style="display:none">
+            <div class="add-car-inputs">
+              <input type="text" id="settingsAddCarFolder" placeholder="iRacing folder name — e.g. ferrari296gt3" autocomplete="off">
+              <input type="text" id="settingsAddCarDisplay" placeholder="Display name — e.g. Ferrari 296 GT3" autocomplete="off">
+            </div>
+            <div class="add-car-footer">
+              <p class="field-hint">Folder is case-sensitive on some systems</p>
+              <div class="add-car-actions">
+                <button class="btn-add-car-cancel" onclick="toggleSettingsAddCar()">Cancel</button>
+                <button class="btn-add-car-save" onclick="saveNewCar()">Add car</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section-divider"></div>
+
+          <!-- API Pricing Overrides -->
+          <div class="settings-section-header">
+            <div>
+              <h2 class="settings-section-title">API Pricing</h2>
+              <p class="field-hint" style="margin-top:2px">
+                ⚠️ <strong>The default prices baked into this app may be out of date.</strong> Google can change Gemini API rates at any time and this repo may not reflect the latest values. These figures are used for the cost display and spending history only — they have no effect on what you are actually billed.
+              </p>
+              <p class="field-hint" style="margin-top:4px">
+                Always verify current rates at <a href="#" onclick="openExternal('https://ai.google.dev/gemini-api/docs/pricing')">ai.google.dev/gemini-api/docs/pricing</a> and use the fields below to override if needed.
+              </p>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field flex-1">
+              <label for="settingsPriceFlash1k">Flash 1K ($/image)</label>
+              <input type="number" id="settingsPriceFlash1k" step="0.001" min="0" placeholder="0.067">
+            </div>
+            <div class="field flex-1">
+              <label for="settingsPriceFlash2k">Flash 2K ($/image)</label>
+              <input type="number" id="settingsPriceFlash2k" step="0.001" min="0" placeholder="0.101">
+            </div>
+            <div class="field flex-1">
+              <label for="settingsPricePro">Pro ($/image)</label>
+              <input type="number" id="settingsPricePro" step="0.001" min="0" placeholder="0.134">
+            </div>
+          </div>
+
+          <div class="settings-section-divider"></div>
+
+          <button class="btn-save" onclick="saveSettings()">Save Settings</button>
+          <div class="status-bar" id="settingsStatus" style="display:none">
+            <span class="status-icon"></span>
+            <span class="status-text"></span>
+          </div>
+        </div>
+      </section>
+    </main>
+    </div><!-- /.app-body -->
+
+    <!-- ═══ History Detail Overlay ═══ -->
+    <!-- ─── Samples Modal ──────────────────────────────────────────────── -->
+    <div class="overlay" id="samplesModalOverlay" style="display:none" onclick="closeSamplesModal()">
+      <div class="modal modal-samples" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h2 id="samplesModalTitle">Sample Prompts</h2>
+          <button class="modal-close-btn" onclick="closeSamplesModal()">&times;</button>
+        </div>
+        <div class="samples-modal-categories" id="samplesModalCategories"></div>
+        <div class="modal-body" id="samplesModalBody"></div>
+      </div>
+    </div>
+
+    <!-- ═══ Spending Modal ═══ -->
+    <div class="overlay" id="spendingModalOverlay" style="display:none" onclick="closeSpendingModal(event)">
+      <div class="modal modal-spending" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h2>Spending Breakdown</h2>
+          <button class="modal-close-btn" onclick="closeSpendingModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="spending-modal-total" id="spendingModalTotal"></div>
+          <div class="spending-modal-table-wrap">
+            <table class="spending-modal-table" id="spendingModalTable">
+              <thead>
+                <tr><th>Date</th><th>Generations</th><th>Cost</th></tr>
+              </thead>
+              <tbody id="spendingModalTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="history-detail-overlay" id="historyDetailOverlay" style="display:none" onclick="closeHistoryDetail(event)">
+      <div class="history-detail-panel" onclick="event.stopPropagation()">
+        <button class="detail-close-btn" onclick="closeHistoryDetail()">&times;</button>
+        <div class="detail-layout">
+          <!-- Preview -->
+          <div class="detail-preview">
+            <div class="detail-preview-card" onmouseenter="showDetailPreviewActions()" onmouseleave="hideDetailPreviewActions()">
+              <img id="detailPreviewImg" class="preview-img" alt="Livery preview">
+              <div class="preview-actions" id="detailPreviewActions" style="display:none">
+                <button class="tray-btn" onclick="copyDetailPreview()" title="Copy to clipboard">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                </button>
+                <button class="tray-btn" onclick="downloadDetailPreview()" title="Download">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </button>
+                <button class="tray-btn" onclick="detailDeployToIRacing()" title="Load in iRacing">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                </button>
+                <button class="tray-btn" onclick="openInExplorer(currentDetailItem?.path)" title="Show in Explorer">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+          <!-- Info -->
+          <div class="detail-info">
+            <div class="detail-badges" id="detailBadges"></div>
+            <div class="detail-prompt" id="detailPrompt"></div>
+            <div class="detail-meta" id="detailMeta"></div>
+
+            <!-- Actions -->
+            <div class="detail-actions">
+              <button class="detail-action-btn detail-action-primary" onclick="detailDeployToIRacing()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Load in iRacing
+              </button>
+              <button class="detail-action-btn" onclick="detailLoadSettings()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                Load Settings
+              </button>
+              <button class="detail-action-btn" onclick="detailIterate()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Modify</button>
+              <button class="detail-action-btn" onclick="detailUpscale()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                Upscale
+              </button>
+              <button class="detail-action-btn detail-action-danger" onclick="detailDeleteLivery()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                Delete
+              </button>
+            </div>
+
+            <!-- Gemini Conversation Log -->
+            <details class="detail-json-toggle">
+              <summary>View Gemini conversation log</summary>
+              <div class="detail-conversation-log" id="detailConversationLog"></div>
+            </details>
+
+            <!-- JSON viewer -->
+            <details class="detail-json-toggle">
+              <summary>View raw JSON</summary>
+              <pre class="detail-json" id="detailJson"></pre>
+            </details>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  <!-- ═══ Cars Library Modal ═══ -->
+  <div class="overlay" id="carsModalOverlay" style="display:none" onclick="closeCarsModal(event)">
+    <div class="modal modal-cars" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Your Cars</h2>
+        <input type="text" class="cars-modal-search" id="carsModalSearch" placeholder="Search by name or folder…" onkeyup="filterCarsModal()">
+        <button class="modal-close-btn" onclick="closeCarsModal()">&times;</button>
+      </div>
+      <div class="cars-modal-content">
+        <!-- Left: car list -->
+        <div class="cars-modal-list-pane" id="carsModalBody"></div>
+        <!-- Right: detail panel -->
+        <div class="cars-modal-detail-pane" id="carsModalDetail">
+          <div class="cars-modal-detail-empty">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <p>Select a car to view details</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ─── Prompt History Modal ─────────────────────────────────────────── -->
+  <div class="overlay" id="promptHistoryOverlay" style="display:none" onclick="closePromptHistoryModal()">
+    <div class="modal" id="promptHistoryModal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Prompt History</h2>
+        <button class="modal-close-btn" onclick="closePromptHistoryModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="promptHistoryBody">
+        <div class="history-empty">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <p>No prompts in history yet</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Browse Uploads Modal ────────────────────────────────────────── -->
+  <div class="overlay" id="browseModalOverlay" style="display:none" onclick="closeBrowseModal()">
+    <div class="modal browse-modal" id="browseModal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h2 id="browseModalTitle">Browse Uploads</h2>
+        <button class="modal-close-btn" onclick="closeBrowseModal()">&times;</button>
+      </div>
+      <div class="modal-body browse-modal-body" id="browseModalBody">
+        <div class="browse-empty" id="browseEmpty" style="display:none">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          <p>No uploads found</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

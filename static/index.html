@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/icon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700&display=swap" rel="stylesheet" />
+    <title>Livery AI Studio</title>
+    <script type="module" crossorigin src="/assets/index-8ZDv1Cqf.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DpXHnbkz.css">
+  </head>
+  <body>
+    <div id="root">
+      <!-- Loading screen shown until React mounts -->
+      <div id="loading-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#0d0f13;gap:16px;">
+        <img src="/icon.png" alt="" width="64" height="64" style="border-radius:12px;" />
+        <div style="font-family:Inter,system-ui,sans-serif;font-size:15px;font-weight:600;color:#e8eaf0;letter-spacing:0.02em;">Livery AI Studio</div>
+        <div class="loading-spinner"></div>
+        <style>
+          .loading-spinner{width:28px;height:28px;border:3px solid #2a2f40;border-top-color:#4a6cf7;border-radius:50%;animation:spin .8s linear infinite}
+          @keyframes spin{to{transform:rotate(360deg)}}
+        </style>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,1118 @@
+{
+  "198_template_ACSS25.zip": {
+    "name": "ARCA Chevrolet SS",
+    "folder": "stockcars2 arcachevy25",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/294/ARCA-Chevrolet-SS/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/198_template_ACSS25.zip"
+  },
+  "199_template_ARCAFM.zip": {
+    "name": "ARCA Ford Mustang",
+    "folder": "stockcars2 arcaford25",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/295/ARCA-Ford-Mustang/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/199_template_ARCAFM.zip"
+  },
+  "200_template_ARCATC.zip": {
+    "name": "ARCA Toyota Camry",
+    "folder": "stockcars2 arcatoyota25",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/296/ARCA-Toyota-Camry/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/200_template_ARCATC.zip"
+  },
+  "134_template_BBM.zip": [
+    {
+      "name": "Dirt 358 Modified",
+      "folder": "dirtmodified 358",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/223/Dirt-358-Modified/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/134_template_BBM.zip"
+    },
+    {
+      "name": "Dirt Big Block Modified",
+      "folder": "dirtmodified bigblock",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/222/Dirt-Big-Block-Modified/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/134_template_BBM.zip"
+    }
+  ],
+  "78_template_DLM350.zip": [
+    {
+      "name": "Dirt Late Model - Limited",
+      "folder": "dirtlatemodel 350",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/167/Dirt-Late-Model---Limited/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/78_template_DLM350.zip"
+    },
+    {
+      "name": "Dirt Late Model - Pro",
+      "folder": "dirtlatemodel 358",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/168/Dirt-Late-Model---Pro/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/78_template_DLM350.zip"
+    },
+    {
+      "name": "Dirt Late Model - Super",
+      "folder": "dirtlatemodel 438",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/169/Dirt-Late-Model---Super/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/78_template_DLM350.zip"
+    }
+  ],
+  "5_template_LEG.zip": [
+    {
+      "name": "Dirt Legends Ford 34 Coupe",
+      "folder": "legends dirtford34c",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/175/Dirt-Legends-Ford-34-Coupe/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/5_template_LEG.zip"
+    },
+    {
+      "name": "Legends Ford 34 Coupe",
+      "folder": "legends ford34c",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/100/Legends-Ford-34-Coupe/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/5_template_LEG.zip"
+    }
+  ],
+  "180_template_MSCW.zip": [
+    {
+      "name": "Dirt Micro Sprint Car",
+      "folder": "dirtmicrosprint winged",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/272/Dirt-Micro-Sprint-Car/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/180_template_MSCW.zip"
+    },
+    {
+      "name": "Dirt Micro Sprint Car - Non-Winged",
+      "folder": "dirtmicrosprint nonwinged",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/273/Dirt-Micro-Sprint-Car---Non-Winged/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/180_template_MSCW.zip"
+    },
+    {
+      "name": "Dirt Outlaw Micro Sprint Car",
+      "folder": "dirtmicrosprint winged outlaw",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/274/Dirt-Outlaw-Micro-Sprint-Car/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/180_template_MSCW.zip"
+    },
+    {
+      "name": "Dirt Outlaw Micro Sprint Car - Non-Winged",
+      "folder": "dirtmicrosprint nonwinged outlaw",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/275/Dirt-Outlaw-Micro-Sprint-Car---Non-Winged/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/180_template_MSCW.zip"
+    }
+  ],
+  "96_template_DM.zip": {
+    "name": "Dirt Midget",
+    "folder": "dirtmidget",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/185/Dirt-Midget/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/96_template_DM.zip"
+  },
+  "191_template_MNSTK.zip": [
+    {
+      "name": "Dirt Mini Stock",
+      "folder": "dirtministock",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/288/Dirt-Mini-Stock/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/191_template_MNSTK.zip"
+    },
+    {
+      "name": "Mini Stock",
+      "folder": "ministock",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/287/Mini-Stock/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/191_template_MNSTK.zip"
+    }
+  ],
+  "80_template_DSC305.zip": [
+    {
+      "name": "Dirt Sprint Car - 305",
+      "folder": "dirtsprint winged 305",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/171/Dirt-Sprint-Car---305/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/80_template_DSC305.zip"
+    },
+    {
+      "name": "Dirt Sprint Car - 360",
+      "folder": "dirtsprint winged 360",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/172/Dirt-Sprint-Car---360/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/80_template_DSC305.zip"
+    },
+    {
+      "name": "Dirt Sprint Car - 360 Non-Winged",
+      "folder": "dirtsprint nonwinged 360",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/177/Dirt-Sprint-Car---360-Non-Winged/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/80_template_DSC305.zip"
+    },
+    {
+      "name": "Dirt Sprint Car - 410",
+      "folder": "dirtsprint winged 410",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/173/Dirt-Sprint-Car---410/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/80_template_DSC305.zip"
+    },
+    {
+      "name": "Dirt Sprint Car - 410 Non-Winged",
+      "folder": "dirtsprint nonwinged 410",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/178/Dirt-Sprint-Car---410-Non-Winged/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/80_template_DSC305.zip"
+    }
+  ],
+  "79_template_DSS.zip": {
+    "name": "Dirt Street Stock",
+    "folder": "dirtstreetstock",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/174/Dirt-Street-Stock/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/79_template_DSS.zip"
+  },
+  "95_template_UMP.zip": {
+    "name": "Dirt UMP Modified",
+    "folder": "dirtumpmod",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/181/Dirt-UMP-Modified/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/95_template_UMP.zip"
+  },
+  "201_template_G4CMC.zip": [
+    {
+      "name": "Gen 4 Chevrolet Monte Carlo - 2003",
+      "folder": "stockcars chevymontecarlo03",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/297/Gen-4-Chevrolet-Monte-Carlo---2003/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/201_template_G4CMC.zip"
+    },
+    {
+      "name": "Gen 4 Chevrolet Monte Carlo - 2003 SS",
+      "folder": "stockcars chevymontecarlo03",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/298/Gen-4-Chevrolet-Monte-Carlo---2003-SS/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/201_template_G4CMC.zip"
+    }
+  ],
+  "202_template_G4FT.zip": [
+    {
+      "name": "Gen 4 Ford Taurus - 2003",
+      "folder": "stockcars fordtaurus03",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/299/Gen-4-Ford-Taurus---2003/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/202_template_G4FT.zip"
+    },
+    {
+      "name": "Gen 4 Ford Taurus - 2003 SS",
+      "folder": "stockcars fordtaurus03",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/300/Gen-4-Ford-Taurus---2003-SS/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/202_template_G4FT.zip"
+    }
+  ],
+  "164_template_LM23.zip": {
+    "name": "Late Model Stock",
+    "folder": "latemodel2023",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/256/Late-Model-Stock/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/164_template_LM23.zip"
+  },
+  "2_template_SK.zip": [
+    {
+      "name": "Modified - NASCAR Whelen Tour",
+      "folder": "skmodified tour",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/196/Modified---NASCAR-Whelen-Tour/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/2_template_SK.zip"
+    },
+    {
+      "name": "Modified - SK",
+      "folder": "skmodified",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/195/Modified---SK/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/2_template_SK.zip"
+    }
+  ],
+  "103_template_ZL1.zip": {
+    "name": "NASCAR Cup Series Chevrolet Camaro ZL1 [Gen 6]",
+    "folder": "stockcars camarozl12018",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/191/NASCAR-Cup-Series-Chevrolet-Camaro-ZL1-[Gen-6]/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/103_template_ZL1.zip"
+  },
+  "110_template_FM2019.zip": {
+    "name": "NASCAR Cup Series Ford Mustang [Gen 6]",
+    "folder": "stockcars fordmustang2019",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/199/NASCAR-Cup-Series-Ford-Mustang-[Gen-6]/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/110_template_FM2019.zip"
+  },
+  "139_template_NGC.zip": {
+    "name": "NASCAR Cup Series Next Gen Chevrolet Camaro ZL1",
+    "folder": "stockcars chevycamarozl12022",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/227/NASCAR-Cup-Series-Next-Gen-Chevrolet-Camaro-ZL1/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/139_template_NGC.zip"
+  },
+  "140_template_NGF.zip": {
+    "name": "NASCAR Cup Series Next Gen Ford Mustang",
+    "folder": "stockcars fordmustang2022",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/228/NASCAR-Cup-Series-Next-Gen-Ford-Mustang/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/140_template_NGF.zip"
+  },
+  "141_template_NGT.zip": {
+    "name": "NASCAR Cup Series Next Gen Toyota Camry",
+    "folder": "stockcars toyotacamry2022",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/229/NASCAR-Cup-Series-Next-Gen-Toyota-Camry/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/141_template_NGT.zip"
+  },
+  "56_template_TC.zip": {
+    "name": "NASCAR Cup Series Toyota Camry [Gen 6]",
+    "folder": "stockcars toyotacamry",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/146/NASCAR-Cup-Series-Toyota-Camry-[Gen-6]/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/56_template_TC.zip"
+  },
+  "154_template_B87.zip": {
+    "name": "NASCAR Legends Buick LeSabre - 1987",
+    "folder": "stockcars buicklesabre87",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/240/NASCAR-Legends-Buick-LeSabre---1987/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/154_template_B87.zip"
+  },
+  "124_template_C87.zip": {
+    "name": "NASCAR Legends Chevrolet Monte Carlo - 1987",
+    "folder": "stockcars chevymontecarlo87",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/215/NASCAR-Legends-Chevrolet-Monte-Carlo---1987/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/124_template_C87.zip"
+  },
+  "125_template_F87.zip": {
+    "name": "NASCAR Legends Ford Thunderbird - 1987",
+    "folder": "stockcars fordthunderbird87",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/216/NASCAR-Legends-Ford-Thunderbird---1987/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/125_template_F87.zip"
+  },
+  "175_template_P87.zip": {
+    "name": "NASCAR Legends Pontiac Grand Prix - 1987",
+    "folder": "stockcars pontiacgrandprix87",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/266/NASCAR-Legends-Pontiac-Grand-Prix---1987/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/175_template_P87.zip"
+  },
+  "114_template_NCC.zip": {
+    "name": "NASCAR O'Reilly Chevrolet Camaro",
+    "folder": "stockcars2 camaro2019",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/203/NASCAR-O%E2%80%99Reilly-Chevrolet-Camaro/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/114_template_NCC.zip"
+  },
+  "115_template_NFM.zip": {
+    "name": "NASCAR O'Reilly Ford Mustang",
+    "folder": "stockcars2 mustang2019",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/204/NASCAR-O%E2%80%99Reilly-Ford-Mustang/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/115_template_NFM.zip"
+  },
+  "116_template_NTS.zip": {
+    "name": "NASCAR O'Reilly Toyota Supra",
+    "folder": "stockcars2 supra2019",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/205/NASCAR-O%E2%80%99Reilly-Toyota-Supra/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/116_template_NTS.zip"
+  },
+  "111_template_CS2019.zip": {
+    "name": "NASCAR Truck Chevrolet Silverado",
+    "folder": "trucks silverado2019",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/200/NASCAR-Truck-Chevrolet-Silverado/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/111_template_CS2019.zip"
+  },
+  "123_template_F150.zip": {
+    "name": "NASCAR Truck Ford F150",
+    "folder": "trucks fordf150",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/214/NASCAR-Truck-Ford-F150/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/123_template_F150.zip"
+  },
+  "211_template_RAM26.zip": {
+    "name": "NASCAR Truck RAM",
+    "folder": "trucks ram2026",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/308/NASCAR-Truck-RAM/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/211_template_RAM26.zip"
+  },
+  "155_template_TTP.zip": {
+    "name": "NASCAR Truck Toyota Tundra TRD Pro",
+    "folder": "trucks toyotatundra2022",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/244/NASCAR-Truck-Toyota-Tundra-TRD-Pro/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/155_template_TTP.zip"
+  },
+  "18_template_SC.zip": {
+    "name": "Silver Crown",
+    "folder": "silvercrown",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/113/Silver-Crown/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/18_template_SC.zip"
+  },
+  "37_template_SPRT.zip": {
+    "name": "Sprint Car",
+    "folder": "sprint",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/129/Sprint-Car/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/37_template_SPRT.zip"
+  },
+  "179_template_SRX.zip": {
+    "name": "SRX",
+    "folder": "srx",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/271/SRX/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/179_template_SRX.zip"
+  },
+  "186_template_SSC.zip": {
+    "name": "Street Stock - Casino M2",
+    "folder": "streetstock streetstock2",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/280/Street-Stock---Casino-M2/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/186_template_SSC.zip"
+  },
+  "187_template_SSE.zip": {
+    "name": "Street Stock - Eagle T3",
+    "folder": "streetstock streetstock3",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/281/Street-Stock---Eagle-T3/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/187_template_SSE.zip"
+  },
+  "36_template_SS.zip": {
+    "name": "Street Stock - Panther C1",
+    "folder": "streetstock",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/128/Street-Stock---Panther-C1/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/36_template_SS.zip"
+  },
+  "54_template_SLM.zip": {
+    "name": "Super Late Model",
+    "folder": "superlatemodel",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/225/Super-Late-Model/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/54_template_SLM.zip"
+  },
+  "24_template_NW09.zip": [
+    {
+      "name": "[Legacy] ARCA Menards Chevrolet Impala",
+      "folder": "stockcars2 chevy",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/248/[Legacy]-ARCA-Menards-Chevrolet-Impala/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/24_template_NW09.zip"
+    },
+    {
+      "name": "[Legacy] Gen 4 Cup",
+      "folder": "stockcars2 chevy gen4cup",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/257/[Legacy]-Gen-4-Cup/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/24_template_NW09.zip"
+    }
+  ],
+  "22_template_CUP.zip": {
+    "name": "[Legacy] NASCAR Cup Chevrolet Impala COT - 2009",
+    "folder": "stockcars impala",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/104/[Legacy]-NASCAR-Cup-Chevrolet-Impala-COT---2009/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/22_template_CUP.zip"
+  },
+  "45_template_CSS.zip": {
+    "name": "[Legacy] NASCAR Cup Chevrolet SS - 2013",
+    "folder": "stockcars chevyss",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/136/[Legacy]-NASCAR-Cup-Chevrolet-SS---2013/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/45_template_CSS.zip"
+  },
+  "46_template_FF.zip": {
+    "name": "[Legacy] NASCAR Cup Ford Fusion - 2016",
+    "folder": "stockcars fordfusion",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/137/[Legacy]-NASCAR-Cup-Ford-Fusion---2016/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/46_template_FF.zip"
+  },
+  "38_template_IMPB.zip": {
+    "name": "[Legacy] NASCAR Nationwide Chevrolet Impala - 2012",
+    "folder": "stockcars2 chevy cot",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/130/[Legacy]-NASCAR-Nationwide-Chevrolet-Impala---2012/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/38_template_IMPB.zip"
+  },
+  "20_template_TRUCK.zip": {
+    "name": "[Legacy] NASCAR Truck Chevrolet Silverado - 2008",
+    "folder": "trucks silverado",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/107/[Legacy]-NASCAR-Truck-Chevrolet-Silverado---2008/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/20_template_TRUCK.zip"
+  },
+  "58_template_CCB.zip": {
+    "name": "[Legacy] NASCAR Xfinity Chevrolet Camaro - 2014",
+    "folder": "stockcars2 nwcamaro2014",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/149/[Legacy]-NASCAR-Xfinity-Chevrolet-Camaro---2014/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/58_template_CCB.zip"
+  },
+  "51_template_FM.zip": {
+    "name": "[Legacy] NASCAR Xfinity Ford Mustang - 2016",
+    "folder": "stockcars2 nwford2013",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/140/[Legacy]-NASCAR-Xfinity-Ford-Mustang---2016/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/51_template_FM.zip"
+  },
+  "69_template_NXTC.zip": {
+    "name": "[Legacy] NASCAR Xfinity Toyota Camry - 2015",
+    "folder": "stockcars2 camry2015",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/156/[Legacy]-NASCAR-Xfinity-Toyota-Camry---2015/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/69_template_NXTC.zip"
+  },
+  "170_template_AGTP.zip": {
+    "name": "Acura ARX-06 GTP",
+    "folder": "acuraarx06gtp",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/262/Acura-ARX-06-GTP/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/170_template_AGTP.zip"
+  },
+  "194_template_NSXE22.zip": {
+    "name": "Acura NSX GT3 EVO 22",
+    "folder": "acuransxevo22gt3",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/291/Acura-NSX-GT3-EVO-22/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/194_template_NSXE22.zip"
+  },
+  "64_template_AM1.zip": {
+    "name": "Aston Martin DBR9 GT1",
+    "folder": "astonmartin dbr9",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/155/Aston-Martin-DBR9-GT1/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/64_template_AM1.zip"
+  },
+  "206_template_AMGT3.zip": {
+    "name": "Aston Martin Vantage GT3 EVO",
+    "folder": "amvantageevogt3",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/304/Aston-Martin-Vantage-GT3-EVO/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/206_template_AMGT3.zip"
+  },
+  "150_template_AMV4.zip": {
+    "name": "Aston Martin Vantage GT4",
+    "folder": "amvantagegt4",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/238/Aston-Martin-Vantage-GT4/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/150_template_AMV4.zip"
+  },
+  "76_template_A90.zip": {
+    "name": "Audi 90 GTO",
+    "folder": "audi90gto",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/163/Audi-90-GTO/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/76_template_A90.zip"
+  },
+  "98_template_R18.zip": {
+    "name": "Audi R18",
+    "folder": "audir18",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/186/Audi-R18/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/98_template_R18.zip"
+  },
+  "176_template_AEVO2.zip": {
+    "name": "Audi R8 LMS EVO II GT3",
+    "folder": "audir8lmsevo2gt3",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/269/Audi-R8-LMS-EVO-II-GT3/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/176_template_AEVO2.zip"
+  },
+  "112_template_RS3.zip": {
+    "name": "Audi RS 3 LMS TCR",
+    "folder": "audirs3lms",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/202/Audi-RS-3-LMS-TCR/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/112_template_RS3.zip"
+  },
+  "210_template_ARS3G2.zip": {
+    "name": "Audi RS3 LMS Gen 2 TCR",
+    "folder": "audirs3lmsgen2",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/307/Audi-RS3-LMS-Gen-2-TCR/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/210_template_ARS3G2.zip"
+  },
+  "159_template_BLMDh.zip": {
+    "name": "BMW M Hybrid V8",
+    "folder": "bmwlmdh",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/251/BMW-M-Hybrid-V8/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/159_template_BLMDh.zip"
+  },
+  "195_template_BMWM2.zip": {
+    "name": "BMW M2 CS Racing",
+    "folder": "bmwm2csr",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/292/BMW-M2-CS-Racing/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/195_template_BMWM2.zip"
+  },
+  "122_template_BMWM4.zip": {
+    "name": "BMW M4 F82 GT4 - 2018",
+    "folder": "bmwm4gt4",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/213/BMW-M4-F82-GT4---2018/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/122_template_BMWM4.zip"
+  },
+  "189_template_BMWGT4.zip": {
+    "name": "BMW M4 G82 GT4 Evo",
+    "folder": "bmwm4evogt4",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/285/BMW-M4-G82-GT4-Evo/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/189_template_BMWGT4.zip"
+  },
+  "132_template_M4GT3.zip": {
+    "name": "BMW M4 GT3 EVO",
+    "folder": "bmwm4gt3",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/224/BMW-M4-GT3-EVO/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/132_template_M4GT3.zip"
+  },
+  "109_template_BMWM8.zip": {
+    "name": "BMW M8 GTE",
+    "folder": "bmwm8gte",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/194/BMW-M8-GTE/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/109_template_BMWM8.zip"
+  },
+  "41_template_CTSVR.zip": {
+    "name": "Cadillac CTS-V Racecar",
+    "folder": "cadillacctsvr",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/134/Cadillac-CTS-V-Racecar/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/41_template_CTSVR.zip"
+  },
+  "168_template_CGTP.zip": {
+    "name": "Cadillac V-Series.R GTP",
+    "folder": "cadillacvseriesrgtp",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/260/Cadillac-V-Series.R-GTP/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/168_template_CGTP.zip"
+  },
+  "26_template_C6R.zip": {
+    "name": "Chevrolet Corvette C6.R GT1",
+    "folder": "c6r",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/103/Chevrolet-Corvette-C6.R-GT1/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/26_template_C6R.zip"
+  },
+  "70_template_C7DP.zip": {
+    "name": "Chevrolet Corvette C7 DP",
+    "folder": "c7vettedp",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/157/Chevrolet-Corvette-C7-DP/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/70_template_C7DP.zip"
+  },
+  "127_template_C8R.zip": {
+    "name": "Chevrolet Corvette C8.R GTE",
+    "folder": "c8rvettegte",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/217/Chevrolet-Corvette-C8.R-GTE/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/127_template_C8R.zip"
+  },
+  "184_template_CZ06.zip": {
+    "name": "Chevrolet Corvette Z06 GT3.R",
+    "folder": "chevyvettez06rgt3",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/278/Chevrolet-Corvette-Z06-GT3.R/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/184_template_CZ06.zip"
+  },
+  "106_template_F317.zip": {
+    "name": "Dallara F3",
+    "folder": "dallaraf3",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/193/Dallara-F3/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/106_template_F317.zip"
+  },
+  "205_template_DIL15.zip": {
+    "name": "Dallara IL-15",
+    "folder": "dallarail15",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/303/Dallara-IL-15/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/205_template_DIL15.zip"
+  },
+  "129_template_IR01.zip": {
+    "name": "Dallara iR-01",
+    "folder": "dallarair01",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/219/Dallara-iR-01/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/129_template_IR01.zip"
+  },
+  "99_template_IR18.zip": {
+    "name": "Dallara IR18",
+    "folder": "dallarair18",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/187/Dallara-IR18/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/99_template_IR18.zip"
+  },
+  "128_template_P217.zip": {
+    "name": "Dallara P217",
+    "folder": "dallarap217",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/218/Dallara-P217/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/128_template_P217.zip"
+  },
+  "203_template_F296C.zip": {
+    "name": "Ferrari 296 Challenge",
+    "folder": "ferrari296challenge",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/301/Ferrari-296-Challenge/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/203_template_F296C.zip"
+  },
+  "173_template_F296.zip": {
+    "name": "Ferrari 296 GT3",
+    "folder": "ferrari296gt3",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/264/Ferrari-296-GT3/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/173_template_F296.zip"
+  },
+  "144_template_FEVO.zip": {
+    "name": "Ferrari 488 GT3 Evo 2020",
+    "folder": "ferrarievogt3",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/233/Ferrari-488-GT3-Evo-2020/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/144_template_FEVO.zip"
+  },
+  "93_template_488E.zip": {
+    "name": "Ferrari 488 GTE",
+    "folder": "ferrari488gte",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/179/Ferrari-488-GTE/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/93_template_488E.zip"
+  },
+  "196_template_F499P.zip": {
+    "name": "Ferrari 499P",
+    "folder": "ferrari499p",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/293/Ferrari-499P/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/196_template_F499P.zip"
+  },
+  "207_template_FIAACC.zip": {
+    "name": "FIA Cross Car",
+    "folder": "crosscartn11",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/305/FIA-Cross-Car/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/207_template_FIAACC.zip"
+  },
+  "148_template_F4.zip": {
+    "name": "FIA F4",
+    "folder": "formulair04",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/239/FIA-F4/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/148_template_F4.zip"
+  },
+  "81_template_FF-WSC.zip": {
+    "name": "Ford Fiesta RS WRC",
+    "folder": "fordfiestarswrc",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/183/Ford-Fiesta-RS-WRC/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/81_template_FF-WSC.zip"
+  },
+  "40_template_FGT.zip": {
+    "name": "Ford GT GT2",
+    "folder": "fordgt",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/133/Ford-GT-GT2/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/40_template_FGT.zip"
+  },
+  "59_template_FGT3.zip": {
+    "name": "Ford GT GT3",
+    "folder": "fordgt gt3",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/151/Ford-GT-GT3/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/59_template_FGT3.zip"
+  },
+  "92_template_FGT7.zip": {
+    "name": "Ford GTE",
+    "folder": "fordgt2017",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/180/Ford-GTE/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/92_template_FGT7.zip"
+  },
+  "30_template_FR500S.zip": {
+    "name": "Ford Mustang FR500S",
+    "folder": "fr500s",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/253/Ford-Mustang-FR500S/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/30_template_FR500S.zip"
+  },
+  "185_template_FMGT3.zip": {
+    "name": "Ford Mustang GT3",
+    "folder": "fordmustanggt3",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/279/Ford-Mustang-GT3/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/185_template_FMGT3.zip"
+  },
+  "204_template_FMGT4.zip": {
+    "name": "Ford Mustang GT4",
+    "folder": "fordmustanggt4",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/302/Ford-Mustang-GT4/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/204_template_FMGT4.zip"
+  },
+  "74_template_F20.zip": {
+    "name": "Formula Renault 2.0",
+    "folder": "formularenault20",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/161/Formula-Renault-2.0/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/74_template_F20.zip"
+  },
+  "105_template_F35.zip": {
+    "name": "Formula Renault 3.5",
+    "folder": "formularenault35",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/192/Formula-Renault-3.5/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/105_template_F35.zip"
+  },
+  "142_template_FVEE.zip": {
+    "name": "Formula Vee",
+    "folder": "formulavee",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/232/Formula-Vee/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/142_template_FVEE.zip"
+  },
+  "67_template_MX16.zip": {
+    "name": "Global Mazda MX-5 Cup",
+    "folder": "mx5 mx52016",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/159/Global-Mazda-MX-5-Cup/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/67_template_MX16.zip"
+  },
+  "147_template_HCTR.zip": {
+    "name": "Honda Civic Type R TCR",
+    "folder": "hondacivictyper",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/236/Honda-Civic-Type-R-TCR/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/147_template_HCTR.zip"
+  },
+  "39_template_ARX.zip": {
+    "name": "HPD ARX-01c",
+    "folder": "hpdarx01c",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/132/HPD-ARX-01c/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/39_template_ARX.zip"
+  },
+  "146_template_HECN7.zip": {
+    "name": "Hyundai Elantra N TCR",
+    "folder": "hyundaielantracn7",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/237/Hyundai-Elantra-N-TCR/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/146_template_HECN7.zip"
+  },
+  "153_template_HVTC.zip": {
+    "name": "Hyundai Veloster N TCR",
+    "folder": "hyundaivelostern",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/241/Hyundai-Veloster-N-TCR/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/153_template_HVTC.zip"
+  },
+  "120_template_PM18.zip": {
+    "name": "Indy Pro 2000 PM-18",
+    "folder": "indypropm18",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/211/Indy-Pro-2000-PM-18/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/120_template_PM18.zip"
+  },
+  "44_template_KIA.zip": {
+    "name": "Kia Optima",
+    "folder": "kiaoptima",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/138/Kia-Optima/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/44_template_KIA.zip"
+  },
+  "133_template_LGT3.zip": {
+    "name": "Lamborghini Huracan GT3 EVO",
+    "folder": "lamborghinievogt3",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/220/Lamborghini-Huracan-GT3-EVO/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/133_template_LGT3.zip"
+  },
+  "165_template_LJSP.zip": {
+    "name": "Ligier JS P320",
+    "folder": "ligierjsp320",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/259/Ligier-JS-P320/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/165_template_LJSP.zip"
+  },
+  "42_template_L49.zip": {
+    "name": "Lotus 49",
+    "folder": "lotus49",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/139/Lotus-49/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/42_template_L49.zip"
+  },
+  "25_template_L79.zip": {
+    "name": "Lotus 79",
+    "folder": "lotus79",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/249/Lotus-79/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/25_template_L79.zip"
+  },
+  "104_template_PRO2.zip": [
+    {
+      "name": "Lucas Oil Off Road Pro 2 Lite",
+      "folder": "protrucks pro2lite",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/206/Lucas-Oil-Off-Road-Pro-2-Lite/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/104_template_PRO2.zip"
+    },
+    {
+      "name": "Lucas Oil Off Road Pro 2 Truck",
+      "folder": "protrucks pro2truck",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/197/Lucas-Oil-Off-Road-Pro-2-Truck/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/104_template_PRO2.zip"
+    }
+  ],
+  "107_template_PRO4.zip": {
+    "name": "Lucas Oil Off Road Pro 4 Truck",
+    "folder": "protrucks pro4truck",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/198/Lucas-Oil-Off-Road-Pro-4-Truck/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/107_template_PRO4.zip"
+  },
+  "135_template_M570S.zip": {
+    "name": "McLaren 570S GT4",
+    "folder": "mclaren570sgt4",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/226/McLaren-570S-GT4/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/135_template_M570S.zip"
+  },
+  "188_template_720GT3.zip": {
+    "name": "McLaren 720s GT3 EVO",
+    "folder": "mclaren720sgt3",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/284/McLaren-720s-GT3-EVO/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/188_template_720GT3.zip"
+  },
+  "43_template_MP4.zip": {
+    "name": "McLaren MP4-12C GT3",
+    "folder": "mclarenmp4",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/135/McLaren-MP4-12C-GT3/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/43_template_MP4.zip"
+  },
+  "71_template_MP430.zip": {
+    "name": "McLaren MP4-30",
+    "folder": "mclarenmp430",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/158/McLaren-MP4-30/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/71_template_MP430.zip"
+  },
+  "156_template_MGT3E.zip": {
+    "name": "Mercedes-AMG GT3 2020",
+    "folder": "mercedesamgevogt3",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/246/Mercedes-AMG-GT3-2020/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/156_template_MGT3E.zip"
+  },
+  "157_template_MGT4.zip": {
+    "name": "Mercedes-AMG GT4",
+    "folder": "mercedesamggt4",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/247/Mercedes-AMG-GT4/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/157_template_MGT4.zip"
+  },
+  "77_template_ZXT.zip": {
+    "name": "Nissan GTP ZX-T",
+    "folder": "nissangtpzxt",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/164/Nissan-GTP-ZX-T/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/77_template_ZXT.zip"
+  },
+  "3_template_SOL.zip": [
+    {
+      "name": "Pontiac Solstice",
+      "folder": "solstice",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/102/Pontiac-Solstice/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/3_template_SOL.zip"
+    },
+    {
+      "name": "Pontiac Solstice - Rookie",
+      "folder": "solstice rookie",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/120/Pontiac-Solstice---Rookie/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/3_template_SOL.zip"
+    }
+  ],
+  "119_template_P718.zip": {
+    "name": "Porsche 718 Cayman GT4 Clubsport MR",
+    "folder": "porsche718gt4",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/210/Porsche-718-Cayman-GT4-Clubsport-MR/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/119_template_P718.zip"
+  },
+  "208_template_P9922.zip": {
+    "name": "Porsche 911 Cup (992.2)",
+    "folder": "porsche9922cup",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/306/Porsche-911-Cup-(992.2)/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/208_template_P9922.zip"
+  },
+  "169_template_992R.zip": {
+    "name": "Porsche 911 GT3 R (992)",
+    "folder": "porsche992rgt3",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/261/Porsche-911-GT3-R-(992)/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/169_template_992R.zip"
+  },
+  "102_template_RSR.zip": {
+    "name": "Porsche 911 RSR",
+    "folder": "porsche991rsr",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/190/Porsche-911-RSR/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/102_template_RSR.zip"
+  },
+  "100_template_919.zip": {
+    "name": "Porsche 919",
+    "folder": "porsche919",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/188/Porsche-919/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/100_template_919.zip"
+  },
+  "174_template_PGTP.zip": {
+    "name": "Porsche 963 GTP",
+    "folder": "porsche963gtp",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/265/Porsche-963-GTP/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/174_template_PGTP.zip"
+  },
+  "158_template_PMR.zip": {
+    "name": "Porsche Mission R",
+    "folder": "porschemissionr",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/250/Porsche-Mission-R/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/158_template_PMR.zip"
+  },
+  "149_template_SR10.zip": {
+    "name": "Radical SR10",
+    "folder": "radicalsr10",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/245/Radical-SR10/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/149_template_SR10.zip"
+  },
+  "13_template_SR8.zip": {
+    "name": "Radical SR8",
+    "folder": "radical sr8",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/110/Radical-SR8/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/13_template_SR8.zip"
+  },
+  "163_template_GR22.zip": {
+    "name": "Ray FF1600",
+    "folder": "raygr22",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/255/Ray-FF1600/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/163_template_GR22.zip"
+  },
+  "162_template_RENC.zip": {
+    "name": "Renault Clio",
+    "folder": "renaultcliocup",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/254/Renault-Clio/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/162_template_RENC.zip"
+  },
+  "50_template_R12T.zip": [
+    {
+      "name": "Ruf RT 12R AWD",
+      "folder": "rufrt12r awd",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/145/Ruf-RT-12R-AWD/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/50_template_R12T.zip"
+    },
+    {
+      "name": "Ruf RT 12R C-Spec",
+      "folder": "rufrt12r track cspec",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/141/Ruf-RT-12R-C-Spec/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/50_template_R12T.zip"
+    },
+    {
+      "name": "Ruf RT 12R RWD",
+      "folder": "rufrt12r rwd",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/142/Ruf-RT-12R-RWD/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/50_template_R12T.zip"
+    },
+    {
+      "name": "Ruf RT 12R Track",
+      "folder": "rufrt12r track",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/143/Ruf-RT-12R-Track/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/50_template_R12T.zip"
+    }
+  ],
+  "23_template_SRF.zip": {
+    "name": "SCCA Spec Racer Ford",
+    "folder": "specracer",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/235/SCCA-Spec-Racer-Ford/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/23_template_SRF.zip"
+  },
+  "1_template_SBRS.zip": {
+    "name": "Skip Barber Formula 2000",
+    "folder": "rt2000",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/209/Skip-Barber-Formula-2000/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/1_template_SBRS.zip"
+  },
+  "151_template_SCCC.zip": {
+    "name": "Stock Car Brasil Chevrolet Cruze",
+    "folder": "stockcarbrasil cruze",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/242/Stock-Car-Brasil-Chevrolet-Cruze/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/151_template_SCCC.zip"
+  },
+  "152_template_SCTC.zip": {
+    "name": "Stock Car Brasil Toyota Corolla",
+    "folder": "stockcarbrasil corolla",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/243/Stock-Car-Brasil-Toyota-Corolla/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/152_template_SCTC.zip"
+  },
+  "101_template_WRX.zip": {
+    "name": "Subaru WRX STI",
+    "folder": "subaruwrxsti",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/189/Subaru-WRX-STI/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/101_template_WRX.zip"
+  },
+  "178_template_SFL324.zip": {
+    "name": "Super Formula Lights",
+    "folder": "superformulalights324",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/270/Super-Formula-Lights/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/178_template_SFL324.zip"
+  },
+  "172_template_SF23H.zip": {
+    "name": "Super Formula SF23 - Honda",
+    "folder": "superformulasf23 honda",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/267/Super-Formula-SF23---Honda/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/172_template_SF23H.zip"
+  },
+  "171_template_SF23T.zip": {
+    "name": "Super Formula SF23 - Toyota",
+    "folder": "superformulasf23 toyota",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/263/Super-Formula-SF23---Toyota/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/171_template_SF23T.zip"
+  },
+  "192_template_SCCG3.zip": {
+    "name": "Supercars Chevrolet Camaro Gen 3",
+    "folder": "supercars chevycamarogen3",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/290/Supercars-Chevrolet-Camaro-Gen-3/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/192_template_SCCG3.zip"
+  },
+  "190_template_SFMG3.zip": {
+    "name": "Supercars Ford Mustang Gen 3",
+    "folder": "supercars fordmustanggen3",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/289/Supercars-Ford-Mustang-Gen-3/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/190_template_SFMG3.zip"
+  },
+  "160_template_GR86.zip": {
+    "name": "Toyota GR86",
+    "folder": "toyotagr86",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/252/Toyota-GR86/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/160_template_GR86.zip"
+  },
+  "121_template_PM17.zip": {
+    "name": "USF 2000",
+    "folder": "usf2000usf17",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/212/USF-2000/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/121_template_PM17.zip"
+  },
+  "91_template_VWB.zip": [
+    {
+      "name": "VW Beetle",
+      "folder": "vwbeetlegrc",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/184/VW-Beetle/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/91_template_VWB.zip"
+    },
+    {
+      "name": "VW Beetle - Lite",
+      "folder": "vwbeetlegrc lite",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/231/VW-Beetle---Lite/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/91_template_VWB.zip"
+    }
+  ],
+  "27_template_VWTDI.zip": {
+    "name": "VW Jetta TDI Cup",
+    "folder": "jettatdi",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/116/VW-Jetta-TDI-Cup/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/27_template_VWTDI.zip"
+  },
+  "73_template_AR8.zip": {
+    "name": "[Legacy] Audi R8 LMS",
+    "folder": "audir8gt3",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/162/[Legacy]-Audi-R8-LMS/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/73_template_AR8.zip"
+  },
+  "55_template_BMWZ.zip": {
+    "name": "[Legacy] BMW Z4 GT3",
+    "folder": "bmwz4gt3",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/147/[Legacy]-BMW-Z4-GT3/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/55_template_BMWZ.zip"
+  },
+  "57_template_DW12.zip": {
+    "name": "[Legacy] Dallara DW12",
+    "folder": "dallaradw12",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/148/[Legacy]-Dallara-DW12/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/57_template_DW12.zip"
+  },
+  "29_template_INDY.zip": {
+    "name": "[Legacy] Dallara IR-05",
+    "folder": "dallara",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/108/[Legacy]-Dallara-IR-05/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/29_template_INDY.zip"
+  },
+  "94_template_488T3.zip": {
+    "name": "[Legacy] Ferrari 488 GT3",
+    "folder": "ferrari488gt3",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/182/[Legacy]-Ferrari-488-GT3/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/94_template_488T3.zip"
+  },
+  "35_template_MX5.zip": [
+    {
+      "name": "[Legacy] Mazda MX-5 Cup - 2010",
+      "folder": "mx5 cup",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/126/[Legacy]-Mazda-MX-5-Cup---2010/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/35_template_MX5.zip"
+    },
+    {
+      "name": "[Legacy] Mazda MX-5 Roadster - 2010",
+      "folder": "mx5 roadster",
+      "trading_paints_url": "https://www.tradingpaints.com/dashboard/127/[Legacy]-Mazda-MX-5-Roadster---2010/simstamped",
+      "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/35_template_MX5.zip"
+    }
+  ],
+  "72_template_MGT3.zip": {
+    "name": "[Legacy] Mercedes-AMG GT3",
+    "folder": "mercedesamggt3",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/160/[Legacy]-Mercedes-AMG-GT3/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/72_template_MGT3.zip"
+  },
+  "88_template_P911.zip": {
+    "name": "[Legacy] Porsche 911 GT3 Cup (991)",
+    "folder": "porsche911cup",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/165/[Legacy]-Porsche-911-GT3-Cup-(991)/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/88_template_P911.zip"
+  },
+  "143_template_P992.zip": {
+    "name": "[Legacy] Porsche 911 GT3 Cup (992.1)",
+    "folder": "porsche992cup",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/234/[Legacy]-Porsche-911-GT3-Cup-(992.1)/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/143_template_P992.zip"
+  },
+  "137_template_PGTR.zip": {
+    "name": "[Legacy] Porsche 911 GT3 R",
+    "folder": "porsche911rgt3",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/230/[Legacy]-Porsche-911-GT3-R/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/137_template_PGTR.zip"
+  },
+  "4_template_PM.zip": {
+    "name": "[Legacy] Pro Mazda",
+    "folder": "formulamazda",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/115/[Legacy]-Pro-Mazda/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/4_template_PM.zip"
+  },
+  "21_template_DP.zip": {
+    "name": "[Legacy] Riley MkXX Daytona Prototype - 2008",
+    "folder": "rileydp",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/111/[Legacy]-Riley-MkXX-Daytona-Prototype---2008/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/21_template_DP.zip"
+  },
+  "118_template_FMGT.zip": {
+    "name": "[Legacy] Supercars Ford Mustang GT",
+    "folder": "v8supercars fordmustanggt",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/208/[Legacy]-Supercars-Ford-Mustang-GT/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/118_template_FMGT.zip"
+  },
+  "117_template_HZBC.zip": {
+    "name": "[Legacy] Supercars Holden ZB Commodore",
+    "folder": "v8supercars holden2019",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/207/[Legacy]-Supercars-Holden-ZB-Commodore/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/117_template_HZBC.zip"
+  },
+  "28_template_V8SC.zip": {
+    "name": "[Legacy] V8 Supercar Ford Falcon - 2009",
+    "folder": "fordv8sc",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/122/[Legacy]-V8-Supercar-Ford-Falcon---2009/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/28_template_V8SC.zip"
+  },
+  "61_template_FFV8.zip": {
+    "name": "[Legacy] V8 Supercar Ford FG Falcon - 2014",
+    "folder": "v8supercars ford2014",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/152/[Legacy]-V8-Supercar-Ford-FG-Falcon---2014/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/61_template_FFV8.zip"
+  },
+  "60_template_HCV8.zip": {
+    "name": "[Legacy] V8 Supercar Holden VF Commodore - 2014",
+    "folder": "v8supercars holden2014",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/150/[Legacy]-V8-Supercar-Holden-VF-Commodore---2014/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/60_template_HCV8.zip"
+  },
+  "167_template_G4CIP.zip": {
+    "name": "[Legacy] Gen 4 Cup iRacing Template",
+    "folder": "stockcars2 chevy gen4cup",
+    "trading_paints_url": "https://www.tradingpaints.com/dashboard/257/[Legacy]-Gen-4-Cup/simstamped",
+    "template_download_url": "https://ir-core-sites.iracing.com/members/member_images/cars/car_templates/24_template_NW09.zip"
+  }
+}

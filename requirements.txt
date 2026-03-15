@@ -1,0 +1,25 @@
+# Livery AI Studio — Core Python dependencies
+# Install with: pip install -r requirements.txt
+# For GPU upscaling, run: start.bat --gpu  (or start.sh --gpu)
+
+# Google Gemini SDK
+google-genai>=1.56.0
+
+# SSL certificate handling
+certifi>=2024.0.0
+
+# Image processing (load/save/resize textures)
+Pillow>=10.0.0
+
+# PSD extraction (for car library import)
+psd-tools==1.9.31
+
+# Desktop app UI
+flask>=3.0.0
+pywebview>=5.0.0
+
+# NOTE: Platform-specific and optional packages are installed by the start
+# scripts automatically:
+#   pywin32>=306        — Windows only (window capture)
+#   torch, torchvision  — GPU upscaling (NVIDIA only, via --gpu flag)
+#   realesrgan          — GPU upscaling (via --gpu flag)
