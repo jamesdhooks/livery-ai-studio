@@ -1,32 +1,23 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '../common/Button';
 import { Toggle } from '../common/Toggle';
-import { StatusBar } from '../common/StatusBar';
 import { FileUploader } from '../common/FileUploader';
+import { ModelSelector } from '../common/ModelSelector';
 import { calculateCost, formatCost, getModelDisplayName, getResolutionDisplayName } from '../../utils/pricing';
 import { EnhanceGuidanceModal } from '../modals/EnhanceGuidanceModal';
 import { BrowseUploadsModal } from '../modals/BrowseUploadsModal';
 import { ReferenceContextSamplesModal } from '../modals/ReferenceContextSamplesModal';
 import { InfoTooltip } from '../common/InfoTooltip';
 import { LiveryDetailPanel } from '../common/LiveryDetailPanel';
+import { GenerationProgress } from '../common/GenerationProgress';
+import { useSessionContext } from '../../context/SessionContext';
+import { useConfigContext } from '../../context/ConfigContext';
+import { useCarsContext } from '../../context/CarsContext';
+import { useGenerationPrefs } from '../../context/GenerationPrefsContext';
+import { useGenerateContext } from '../../context/GenerateContext';
+import { useUpscaleContext } from '../../context/UpscaleContext';
 
-// ─── Inline SVG icons (replacing emojis) ────────────────────────────────────
-
-function IconSparkle({ className = '' }) {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className={className}>
-      <path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20.02L12 17.27L7.09 20.02L8.45 13.97L4 9.27L9.91 8.26L12 2Z" />
-    </svg>
-  );
-}
-
-function IconGemini({ className = '' }) {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className={className}>
-      <path d="M12 2L13.5 9.5L20 12L13.5 14.5L12 22L10.5 14.5L4 12L10.5 9.5L12 2Z" />
-    </svg>
-  );
-}
+// ─── Icons ──────────────────────────────────────────────────────────────────
 
 function IconPlus({ className = '' }) {
   return (
@@ -40,14 +31,6 @@ function IconPencil({ className = '' }) {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
       <path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
-    </svg>
-  );
-}
-
-function IconZap({ className = '' }) {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className={className}>
-      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
     </svg>
   );
 }
@@ -70,105 +53,164 @@ function IconCog({ className = '' }) {
   );
 }
 
+function IconGemini({ className = '' }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M12 2L13.5 9.5L20 12L13.5 14.5L12 22L10.5 14.5L4 12L10.5 9.5L12 2Z" />
+    </svg>
+  );
+}
+
 export function GenerateTab({
-  selectedCar,
-  carWireUrl,
-  carDiffuseUrl,
-  generating,
-  lastResult,
-  generateStatus,
-  onGenerate,
-  onClearStatus,
-  onUploadFile,
-  onBrowseUploads,
-  onDeleteUpload,
-  session,
-  onSaveSession,
-  config,
-  onDeploy,
-  deploying,
-  onOpenSamplePrompts,
-  onOpenPromptHistory,
+  // Only props that are truly local to App (injection state, navigation callbacks)
   capabilities,
   injectedPrompt,
   onInjectedPromptUsed,
   onEnhancePrompt,
-  // Per-car override props (from useCarOverrides via App)
-  wireOverride = '',
-  baseOverride = '',
-  overridesLoading = false,
-  onSetWireOverride,
-  onSetBaseOverride,
-  onClearWireOverride,
-  onClearBaseOverride,
-  // Iterate injection — livery path to set as base texture; cleared by App after use
   iteratePath,
   onIteratePathUsed,
+  regenerateData,
+  onRegenerateDataUsed,
+  onNavigateToSpecular,
+  onOpenSamplePrompts,
+  onOpenPromptHistory,
 }) {
-  const [prompt, setPrompt] = useState(session?.last_prompt || '');
-  const [context, setContext] = useState(session?.last_context || '');
-  const [mode, setMode] = useState(session?.last_mode === 'new' || session?.last_mode === 'modify' ? session.last_mode : 'new');
+  // ── Contexts ─────────────────────────────────────────────────────────────
+  const { session, saveSession, debouncedSaveModeState } = useSessionContext();
+  const { config } = useConfigContext();
+  const {
+    selectedCar, carWireUrl, carDiffuseUrl,
+    wireOverride, baseOverride, overridesLoading,
+    setWireOverride, setBaseOverride, clearWireOverride, clearBaseOverride,
+  } = useCarsContext();
+  const { genModel: model, genIs2K: is2K, genAutoUpscale: autoUpscale, setGenModel: onModelChange, setGenIs2K: onIs2KChange, setGenAutoUpscale: onAutoUpscaleChange } = useGenerationPrefs();
+  const {
+    generating, elapsedSeconds, result: lastResult, status: generateStatus,
+    generate: onGenerate, abort: onAbort, uploadFile: onUploadFile,
+    browseUploads: onBrowseUploads, deleteUpload: onDeleteUpload, clearStatus: onClearStatus,
+  } = useGenerateContext();
+  const { deploying, deploy } = useUpscaleContext();
+
+  const handleDeploy = useCallback(async (liveryPath, carName, customerId) => {
+    const cid = customerId || config?.customer_id;
+    await deploy(liveryPath, carName || selectedCar, cid);
+  }, [deploy, config, selectedCar]);
+  // ── Mode ─────────────────────────────────────────────────────────────────
+  // 'new' and 'modify' each have their own fully independent state bag.
+  // `mode` is just the key that says which bag is currently displayed.
+  // Nothing ever copies fields between bags — switching mode just changes the key.
+
+  const [mode, setMode] = useState('new');
+
+  // One state object per mode.  Fields: { prompt, context, referencePaths, referenceContext }
+  // Initialize with empty state — restoration effect will populate from session
+  const [modeState, setModeState] = useState({
+    new: {
+      prompt:           '',
+      context:          '',
+      referencePaths:   [],
+      referenceContext: '',
+    },
+    modify: {
+      prompt:           '',
+      context:          '',
+      referencePaths:   [],
+      referenceContext: '',
+    },
+  });
+
+  // Convenience: current mode's state bag
+  const ms = modeState[mode];
+
+  // Update one field in one mode's bag and persist it to session
+  const updateModeField = useCallback((m, field, value) => {
+    setModeState(prev => {
+      const updated = { ...prev, [m]: { ...prev[m], [field]: value } };
+      // Save the full modeState structure to session
+      saveSession?.({ modeState: updated });
+      return updated;
+    });
+  }, [saveSession]);
+
   const [iterateEnabled, setIterateEnabled] = useState(false);
-  const [model, setModel] = useState(session?.last_model === 'flash' || session?.last_model === 'pro' ? session.last_model : 'pro');
-  const [is2K, setIs2K] = useState(session?.last_is_2k === true);
-  const [autoUpscale, setAutoUpscale] = useState(false);
+  // model, is2K, autoUpscale are lifted to App — received as props
   // wireframePath/basePath are the effective paths used for generation.
   // They resolve: override (if set and file exists) > library default
   const [wireframePath, setWireframePath] = useState('');
   const [basePath, setBasePath] = useState('');
-  const [referencePaths, setReferencePaths] = useState([]);
-  const [referenceContext, setReferenceContext] = useState('');
   const [previewUrl, setPreviewUrl] = useState('');
   const [hoverPreviewUrl, setHoverPreviewUrl] = useState('');
   const [enhancing, setEnhancing] = useState(false);
   const [autoEnhance, setAutoEnhance] = useState(session?.last_auto_enhance === true);
   const [showEnhanceGuidance, setShowEnhanceGuidance] = useState(false);
-  const [generateProgress, setGenerateProgress] = useState(0);
   const [browseCategory, setBrowseCategory] = useState(null); // null | 'wire' | 'base' | 'reference'
   const [showReferenceExamples, setShowReferenceExamples] = useState(false);
-  const progressIntervalRef = useRef(null);
-  const progressResetRef = useRef(null);
   const sessionRestoredRef = useRef(false);
 
   // Derived flags — an override is active when the override path is non-empty
   const wireframeIsOverride = !!wireOverride;
   const baseIsOverride = !!baseOverride;
 
-  // Restore session state once it loads (handles the case where session=null on first render).
-  // useState() initialisers above already handle the case where session arrives before mount,
-  // but useSession loads async so session is often null on initial render.
+  // Restore session state once it loads
   useEffect(() => {
     if (!session || sessionRestoredRef.current) return;
     sessionRestoredRef.current = true;
-    // Scalar fields — only apply if the useState initialiser got a null session (i.e. defaults)
-    if (session.last_prompt)   setPrompt(session.last_prompt);
-    if (session.last_context)  setContext(session.last_context);
-    if (session.last_mode === 'new' || session.last_mode === 'modify') setMode(session.last_mode);
-    if (session.last_model === 'flash' || session.last_model === 'pro') setModel(session.last_model);
-    if (session.last_is_2k === true)       setIs2K(true);
+    
+    const restoredMode = session.last_mode === 'modify' ? 'modify' : 'new';
+    setMode(restoredMode);
+    
+    // Build modeState from session data
+    // Priority: session.modeState (new format) > fallback to legacy flat keys with migration
+    if (session.modeState) {
+      // New structured format
+      setModeState(session.modeState);
+    } else {
+      // Legacy migration: construct from flat keys
+      setModeState({
+        new: {
+          prompt:           session?.last_prompt_new ?? session?.last_prompt ?? '',
+          context:          session?.last_context_new ?? session?.last_context ?? '',
+          referencePaths:   session?.last_refs_new ?? session?.reference_image_paths ?? [],
+          referenceContext: session?.last_refctx_new ?? session?.reference_context ?? '',
+        },
+        modify: {
+          prompt:           session?.last_prompt_modify ?? '',
+          context:          session?.last_context_modify ?? '',
+          referencePaths:   session?.last_refs_modify ?? [],
+          referenceContext: session?.last_refctx_modify ?? '',
+        },
+      });
+    }
+    
     if (session.last_auto_enhance === true) setAutoEnhance(true);
-    // Array/complex fields
-    if (session.reference_image_paths?.length) setReferencePaths(session.reference_image_paths);
-    if (session.reference_context) setReferenceContext(session.reference_context);
   }, [session]);
 
-  // Apply injected prompt from modals (sample prompts, prompt history)
+  // Apply injected prompt from modals into whichever mode is active
   useEffect(() => {
-    if (injectedPrompt != null) {
-      setPrompt(injectedPrompt);
-      onSaveSession?.({ last_prompt: injectedPrompt });
-      onInjectedPromptUsed?.();
-    }
-  }, [injectedPrompt]);
+    if (injectedPrompt == null) return;
+    updateModeField(mode, 'prompt', injectedPrompt);
+    onInjectedPromptUsed?.();
+  }, [injectedPrompt]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Apply iterate path — switch to Modify mode and set the base texture
+  // Iterate: switch to modify mode. Base override already set by App.
+  // We only change mode — each mode's own state is untouched.
   useEffect(() => {
     if (!iteratePath) return;
     setMode('modify');
-    onSaveSession?.({ last_mode: 'modify' });
-    // The base override is already set in App via setBaseOverride; signal consumed
     onIteratePathUsed?.();
-  }, [iteratePath]);
+  }, [iteratePath]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Regenerate: switch to new mode and load the result's prompt/context into the new bag
+  useEffect(() => {
+    if (!regenerateData) return;
+    setMode('new');
+    setModeState(prev => {
+      const updated = { ...prev, new: { ...prev.new, prompt: regenerateData.prompt || '', context: regenerateData.context || '' } };
+      saveSession?.({ modeState: updated });
+      return updated;
+    });
+    onRegenerateDataUsed?.();
+  }, [regenerateData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Update preview when result or base changes
   useEffect(() => {
@@ -213,18 +255,30 @@ export function GenerateTab({
   }, [baseOverride, carDiffuseUrl]);
 
   const handlePromptChange = (value) => {
-    setPrompt(value);
-    onSaveSession?.({ last_prompt: value });
+    console.log('[FRONTEND_HANDLER] handlePromptChange called, value:', value.substring(0, 40));
+    const updated = {
+      ...modeState,
+      [mode]: { ...modeState[mode], prompt: value },
+    };
+    setModeState(updated);
+    debouncedSaveModeState?.(updated, 500);
   };
 
   const handleContextChange = (value) => {
-    setContext(value);
-    onSaveSession?.({ last_context: value });
+    const updated = {
+      ...modeState,
+      [mode]: { ...modeState[mode], context: value },
+    };
+    setModeState(updated);
+    debouncedSaveModeState?.(updated, 500);
   };
 
+  // Switching mode: just flip the key — each mode's bag is already up-to-date in state and session.
+  // Persist last_mode so the correct mode is restored on next load.
   const handleModeChange = (newMode) => {
+    if (newMode === mode) return;
     setMode(newMode);
-    onSaveSession?.({ last_mode: newMode });
+    saveSession?.({ last_mode: newMode });
   };
 
   // Car metadata for upload association.
@@ -238,7 +292,7 @@ export function GenerateTab({
     const result = await onUploadFile?.('wire', file, carMeta);
     if (result?.path) {
       // Persist override for this car
-      await onSetWireOverride?.(result.path);
+      await setWireOverride?.(result.path);
     }
   };
 
@@ -246,144 +300,96 @@ export function GenerateTab({
     const result = await onUploadFile?.('base', file, carMeta);
     if (result?.path) {
       // Persist override for this car
-      await onSetBaseOverride?.(result.path);
+      await setBaseOverride?.(result.path);
     }
   };
 
   const handleReferenceUpload = async (file) => {
     const result = await onUploadFile?.('reference', file, carMeta);
     if (result?.path) {
-      const newPaths = [...referencePaths, result.path];
-      setReferencePaths(newPaths);
-      onSaveSession?.({ reference_image_paths: newPaths });
+      const newPaths = [...ms.referencePaths, result.path];
+        updateModeField(mode, 'referencePaths', newPaths);
     }
   };
 
   const handleClearReference = (path) => {
-    const newPaths = referencePaths.filter((p) => p !== path);
-    setReferencePaths(newPaths);
-    onSaveSession?.({ reference_image_paths: newPaths });
-    // Clear context when all references removed
-    if (newPaths.length === 0 && referenceContext) {
-      setReferenceContext('');
-      onSaveSession?.({ reference_context: '' });
+    const newPaths = ms.referencePaths.filter((p) => p !== path);
+    updateModeField(mode, 'referencePaths', newPaths);
+    if (newPaths.length === 0 && ms.referenceContext) {
+      updateModeField(mode, 'referenceContext', '');
     }
   };
 
   const handleClearWireframe = async () => {
-    await onClearWireOverride?.();
+    await clearWireOverride?.();
   };
 
   const handleClearBase = async () => {
-    await onClearBaseOverride?.();
+    await clearBaseOverride?.();
   };
 
   // Browse modal handlers
   const handleBrowseSelect = (item) => {
     if (!browseCategory) return;
     if (browseCategory === 'wire') {
-      onSetWireOverride?.(item.path);
+      setWireOverride?.(item.path);
     } else if (browseCategory === 'base') {
-      onSetBaseOverride?.(item.path);
+      setBaseOverride?.(item.path);
     } else if (browseCategory === 'reference') {
-      if (!referencePaths.includes(item.path)) {
-        const newPaths = [...referencePaths, item.path];
-        setReferencePaths(newPaths);
-        onSaveSession?.({ reference_image_paths: newPaths });
+      if (!ms.referencePaths.includes(item.path)) {
+        const newPaths = [...ms.referencePaths, item.path];
+        updateModeField(mode, 'referencePaths', newPaths);
       }
     }
   };
 
   const handleEnhance = async () => {
-    if (!prompt.trim() || enhancing) return;
+    if (!ms.prompt.trim() || enhancing) return;
     setEnhancing(true);
     try {
-      const enhanced = await onEnhancePrompt?.(prompt.trim(), context.trim(), mode);
+      const enhanced = await onEnhancePrompt?.(ms.prompt.trim(), ms.context.trim(), mode);
       if (enhanced) {
-        setPrompt(enhanced);
-        onSaveSession?.({ last_prompt: enhanced });
+        updateModeField(mode, 'prompt', enhanced);
       }
     } finally {
       setEnhancing(false);
     }
   };
 
-  const canGenerate = selectedCar && prompt.trim() && !generating;
-
-  // Start progress bar animation
-  const startProgress = () => {
-    if (progressResetRef.current) { clearTimeout(progressResetRef.current); progressResetRef.current = null; }
-    if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
-    setGenerateProgress(0);
-    const startTime = Date.now();
-    const duration = 18000; // animate over ~18s
-    progressIntervalRef.current = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      // Ease-out curve: fast at start, slows down, never quite reaches 100
-      const raw = elapsed / duration;
-      const pct = Math.min(95, raw * 100 * (1 - raw * 0.3));
-      setGenerateProgress(pct);
-    }, 200);
-  };
-
-  const stopProgress = (success) => {
-    if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current);
-      progressIntervalRef.current = null;
-    }
-    if (success) {
-      setGenerateProgress(100);
-      progressResetRef.current = setTimeout(() => {
-        progressResetRef.current = null;
-        setGenerateProgress(0);
-      }, 1500);
-    } else {
-      setGenerateProgress(0);
-    }
-  };
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
-      if (progressResetRef.current) clearTimeout(progressResetRef.current);
-    };
-  }, []);
+  const canGenerate = selectedCar && ms.prompt.trim() && !generating;
 
   const handleGenerate = async () => {
     if (!canGenerate) return;
-    startProgress();
     const customerId = config?.customer_id?.trim() || '';
 
     // Auto-enhance prompt if enabled
-    let finalPrompt = prompt.trim();
+    let finalPrompt = ms.prompt.trim();
     if (autoEnhance) {
       try {
-        const enhanced = await onEnhancePrompt?.(finalPrompt, context.trim(), mode);
+        const enhanced = await onEnhancePrompt?.(finalPrompt, ms.context.trim(), mode);
         if (enhanced) finalPrompt = enhanced;
       } catch { /* continue with original prompt */ }
     }
 
     const result = await onGenerate({
       prompt: finalPrompt,
-      context: context.trim(),
+      context: ms.context.trim(),
       model,
       car_folder: selectedCar || '',
       wireframe_path: wireframePath,
       base_texture_path: mode === 'modify' || iterateEnabled ? basePath : '',
-      reference_paths: referencePaths,
-      reference_context: referenceContext.trim(),
+      reference_paths: ms.referencePaths,
+      reference_context: ms.referenceContext.trim(),
       resolution_2k: model === 'pro' || is2K,
       upscale: autoUpscale && model === 'flash' && !is2K,
       mode: iterateEnabled ? 'iterate' : mode,
       customer_id: customerId,
       auto_deploy: !!customerId,
+      estimatedCost: calculateCost(model, is2K, config),
     });
 
-    stopProgress(!!result);
-
     if (iterateEnabled && result?.livery_path) {
-      onSetBaseOverride?.(result.livery_path);
+      setBaseOverride?.(result.livery_path);
     }
   };
 
@@ -475,8 +481,10 @@ export function GenerateTab({
       ) : (
       <>
       {/* Left panel */}
-      <div className="w-[420px] min-w-[340px] flex-shrink-0 flex flex-col border-r border-border-default overflow-y-auto">
-        <div className="p-3 flex flex-col gap-3">
+      <div className="w-[420px] min-w-[340px] flex-shrink-0 flex flex-col border-r border-border-default overflow-hidden">
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-3 flex flex-col gap-3">
 
           {/* Warning: no customer ID — deploy will be skipped */}
           {!hasCustomerId && (
@@ -516,155 +524,6 @@ export function GenerateTab({
                 {m.label}
               </button>
             ))}
-          </div>
-
-          {/* Iterate toggle (modify mode only) */}
-          {mode === 'modify' && (
-            <div className="flex items-center justify-between py-2 px-3 bg-bg-card rounded border border-border-default">
-              <div>
-                <div className="text-[13px] font-medium text-text-primary flex items-center gap-1">Auto-iterate <InfoTooltip position="right" maxWidth={260} text="When enabled, the most recently generated livery is automatically used as the base texture for the next generation — so you can keep refining without manually re-uploading." /></div>
-                <div className="text-[11px] text-text-muted">Loads result as base for next generation</div>
-              </div>
-              <Toggle checked={iterateEnabled} onChange={setIterateEnabled} id="iterateToggle" />
-            </div>
-          )}
-
-          {/* Context */}
-          <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-1">
-              Context (optional)
-              <InfoTooltip position="right" maxWidth={260} text="Additional background information that guides the AI without being part of the main prompt. Use it for consistent style rules such as 'always use matte finish' or sponsor guidelines." />
-            </label>
-            <textarea
-              value={context}
-              onChange={(e) => handleContextChange(e.target.value)}
-              placeholder="Car number, driver name, team info…"
-              rows={2}
-              className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border-default rounded text-text-primary placeholder-text-muted focus:outline-none focus:border-accent resize-none transition-colors"
-            />
-          </div>
-
-          {/* Prompt */}
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center justify-between">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-1">
-                Prompt *
-                <InfoTooltip position="right" maxWidth={280} text="Your main design description. Be as specific as possible — mention colours (use hex codes), patterns, themes, sponsors, number placement, and finish type (matte, gloss, carbon-fibre)." />
-              </label>
-              <div className="flex gap-1.5 items-center">
-                <button
-                  onClick={() => setShowEnhanceGuidance(true)}
-                  className="flex items-center text-text-muted hover:text-text-primary transition-colors cursor-pointer"
-                  title="Enhance prompt settings"
-                >
-                  <IconCog className="w-3 h-3" />
-                </button>
-                <button
-                  onClick={handleEnhance}
-                  disabled={!prompt.trim() || enhancing || autoEnhance}
-                  className="flex items-center gap-1 text-[11px] text-accent hover:text-accent-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                  title={autoEnhance ? 'Manual enhance disabled — auto-enhance is enabled' : 'Enhance prompt with AI'}
-                >
-                  <IconWand className="w-3 h-3" />
-                  {enhancing ? 'Enhancing…' : 'Enhance'}
-                </button>
-                <span className="text-border-default">|</span>
-                <button
-                  onClick={onOpenPromptHistory}
-                  className="text-[11px] text-text-muted hover:text-text-primary transition-colors cursor-pointer"
-                  title="Prompt history"
-                >
-                  History
-                </button>
-                <span className="text-border-default">|</span>
-                <button
-                  onClick={onOpenSamplePrompts}
-                  className="text-[11px] text-accent hover:text-accent-hover transition-colors cursor-pointer"
-                  title="Sample prompts"
-                >
-                  Examples
-                </button>
-              </div>
-            </div>
-            <textarea
-              value={prompt}
-              onChange={(e) => handlePromptChange(e.target.value)}
-              placeholder="Describe the livery design…"
-              rows={5}
-              className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border-default rounded text-text-primary placeholder-text-muted focus:outline-none focus:border-accent resize-none transition-colors"
-            />
-          </div>
-
-          {/* Auto-enhance toggle */}
-          <div className="flex items-center justify-between py-2 px-3 bg-bg-card rounded border border-border-default">
-            <div>
-              <div className="text-[13px] font-medium text-text-primary flex items-center gap-1">Auto-enhance <InfoTooltip position="right" maxWidth={300}>
-                <div>Automatically improves your prompt with AI before each generation — adding detail and structure without changing your intent.</div>
-                <div className="mt-1.5 pt-1.5 border-t border-border-default text-text-muted">Uses <span className="text-text-secondary">Gemini Flash Lite</span> (text-only) at ~$0.10 / 1M tokens. A typical enhancement costs less than $0.001.</div>
-              </InfoTooltip></div>
-              <div className="text-[11px] text-text-muted">AI-improve prompt before generating</div>
-            </div>
-            <Toggle checked={autoEnhance} onChange={(v) => { setAutoEnhance(v); onSaveSession?.({ last_auto_enhance: v }); }} id="autoEnhance" size="sm" />
-          </div>
-
-          {/* Model selector — segmented control */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-1">Model <InfoTooltip position="right" maxWidth={280} text="Flash: faster and cheaper (~$0.067/image at 1K). Pro: highest fidelity, always 2K (~$0.134/image). Best for final liveries." /></label>
-            <div className="flex rounded-lg border border-border-default overflow-hidden">
-              {[
-                { id: 'flash', label: 'Flash', icon: <IconZap className="w-3.5 h-3.5" />, activeClass: 'bg-accent/20 text-accent' },
-                { id: 'pro', label: 'Pro', icon: <IconSparkle className="w-3.5 h-3.5" />, activeClass: 'bg-accent-wine/20 text-accent-wine' },
-              ].map(({ id, label, icon, activeClass }) => (
-                <button
-                  key={id}
-                  onClick={() => { setModel(id); onSaveSession?.({ last_model: id }); }}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-[13px] font-medium transition-all cursor-pointer ${
-                    model === id
-                      ? activeClass
-                      : 'bg-bg-input text-text-secondary hover:bg-bg-hover'
-                  }`}
-                >
-                  {icon}
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Resolution toggle */}
-          <div className="flex items-center justify-between">
-            <span className="text-[13px] text-text-secondary flex items-center gap-1">2K Resolution <InfoTooltip position="right" maxWidth={260} text={model === 'pro' ? 'Pro always generates at 2048 px for maximum fidelity.' : 'Forces Flash to generate at 2048 px (~$0.101/image) instead of 1024 px. Pro always uses 2K.'} /></span>
-            <Toggle checked={model === 'pro' ? true : is2K} onChange={(v) => { setIs2K(v); onSaveSession?.({ last_is_2k: v }); }} id="resolution2K" size="sm" disabled={model === 'pro'} />
-          </div>
-
-          {/* Auto-upscale toggle */}
-          {showUpscaleToggle && (
-            <div className="flex items-center justify-between">
-              <span className="text-[13px] text-text-secondary flex items-center gap-1">Auto-upscale 1K→2K <InfoTooltip position="right" maxWidth={280} text="After generating at 1K, runs Real-ESRGAN 4× upscaling on your NVIDIA GPU to produce a crisp 2048×2048 texture. The cheapest way to get 2K-quality results (~$0.067 with GPU vs ~$0.101 for Flash 2K)." /></span>
-              <Toggle checked={autoUpscale} onChange={setAutoUpscale} id="upscaleResult" size="sm" />
-            </div>
-          )}
-          {showUpscaleDisabled && (
-            <div className="flex items-center gap-2 px-3 py-2 bg-bg-card rounded border border-border-default text-[11px] text-text-muted">
-              <span className="flex-1">GPU Upscale unavailable</span>
-              <InfoTooltip position="left" maxWidth={300}>
-                <div className="space-y-1.5">
-                  <p className="font-semibold text-text-primary">GPU upscaling requires a custom build</p>
-                  <p>To enable Real-ESRGAN 4× upscaling you need an NVIDIA GPU (6+ GB VRAM) and must launch with GPU dependencies installed:</p>
-                  <p className="font-mono text-accent text-[10px]">start.bat --gpu</p>
-                  <p>If you are using the pre-built .exe, see the <strong className="text-text-primary">Building the EXE</strong> section of the README for instructions on creating a GPU-enabled build.</p>
-                </div>
-              </InfoTooltip>
-            </div>
-          )}
-
-          {/* Pricing row */}
-          <div className="flex items-center gap-2 px-3 py-2 bg-bg-card rounded border border-border-default text-[11px] text-text-muted">
-            <span className="flex-1">
-              <span className={model === 'pro' ? 'text-accent-wine' : 'text-accent'}>{getModelDisplayName(model, is2K, config)}</span>
-              {' · '}{getResolutionDisplayName(model, is2K, config)}
-            </span>
-            <span className="text-text-primary font-medium">{formatCost(cost)}</span>
           </div>
 
           {/* Wireframe + Base texture — side by side */}
@@ -723,7 +582,7 @@ export function GenerateTab({
               </button>
             </div>
             <div className="grid grid-cols-3 gap-1.5">
-              {referencePaths.map((path, i) => (
+              {ms.referencePaths.map((path, i) => (
                 <div key={path} className="relative group">
                   <img
                     src={`/api/uploads/preview?path=${encodeURIComponent(path)}`}
@@ -754,7 +613,7 @@ export function GenerateTab({
             </div>
 
             {/* Reference context — visible when references are added */}
-            {referencePaths.length > 0 && (
+            {ms.referencePaths.length > 0 && (
               <div className="flex flex-col gap-1 mt-1">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-1">
                   Reference Guidance
@@ -768,10 +627,15 @@ export function GenerateTab({
                   </button>
                 </div>
                 <textarea
-                  value={referenceContext}
+                  value={ms.referenceContext}
                   onChange={(e) => {
-                    setReferenceContext(e.target.value);
-                    onSaveSession?.({ reference_context: e.target.value });
+                    const value = e.target.value;
+                    const updated = {
+                      ...modeState,
+                      [mode]: { ...modeState[mode], referenceContext: value },
+                    };
+                    setModeState(updated);
+                    debouncedSaveModeState?.(updated, 500);
                   }}
                   placeholder="e.g. Use the colour scheme from this livery, match the stripe placement, inspired by this real car…"
                   rows={2}
@@ -781,34 +645,137 @@ export function GenerateTab({
             )}
           </div>
 
-        </div>
-
-        {/* Status bar */}
-        {generateStatus && (
-          <div className="px-3 pb-2">
-            <StatusBar status={generateStatus} onDismiss={onClearStatus} />
+          {/* Context */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[11px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-1">
+              Context (optional)
+              <InfoTooltip position="right" maxWidth={260} text="Additional background information that guides the AI without being part of the main prompt. Use it for consistent style rules such as 'always use matte finish' or sponsor guidelines." />
+            </label>
+            <textarea
+              value={ms.context}
+              onChange={(e) => handleContextChange(e.target.value)}
+              placeholder="Car number, driver name, team info…"
+              rows={2}
+              className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border-default rounded text-text-primary placeholder-text-muted focus:outline-none focus:border-accent resize-none transition-colors"
+            />
           </div>
-        )}
 
-        {/* Action buttons */}
-        <div className="p-3 pt-0 flex flex-col gap-2 mt-auto">
-          {/* Progress bar (visible during generation) */}
-          {generating && (
-            <div className="flex flex-col gap-1.5">
-              <div className="w-full h-2 bg-bg-input rounded-full overflow-hidden border border-border-default">
-                <div
-                  className="h-full bg-accent rounded-full transition-all duration-200 ease-out"
-                  style={{ width: `${generateProgress}%` }}
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] text-text-muted">
-                  {generateProgress < 95 ? `~${Math.round(generateProgress)}%` : 'Finishing up…'}
-                </span>
-                <span className="text-[10px] text-text-muted">~15–30 seconds</span>
+          {/* Prompt */}
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-1">
+                Prompt *
+                <InfoTooltip position="right" maxWidth={280} text="Your main design description. Be as specific as possible — mention colours (use hex codes), patterns, themes, sponsors, number placement, and finish type (matte, gloss, carbon-fibre)." />
+              </label>
+              <div className="flex gap-1.5 items-center">
+                <button
+                  onClick={() => setShowEnhanceGuidance(true)}
+                  className="flex items-center text-text-muted hover:text-text-primary transition-colors cursor-pointer"
+                  title="Enhance prompt settings"
+                >
+                  <IconCog className="w-3 h-3" />
+                </button>
+                <button
+                  onClick={handleEnhance}
+                  disabled={!ms.prompt.trim() || enhancing || autoEnhance}
+                  className="flex items-center gap-1 text-[11px] text-accent hover:text-accent-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  title={autoEnhance ? 'Manual enhance disabled — auto-enhance is enabled' : 'Enhance prompt with AI'}
+                >
+                  <IconWand className="w-3 h-3" />
+                  {enhancing ? 'Enhancing…' : 'Enhance'}
+                </button>
+                <span className="text-border-default">|</span>
+                <button
+                  onClick={onOpenPromptHistory}
+                  className="text-[11px] text-text-muted hover:text-text-primary transition-colors cursor-pointer"
+                  title="Prompt history"
+                >
+                  History
+                </button>
+                <span className="text-border-default">|</span>
+                <button
+                  onClick={onOpenSamplePrompts}
+                  className="text-[11px] text-accent hover:text-accent-hover transition-colors cursor-pointer"
+                  title="Sample prompts"
+                >
+                  Examples
+                </button>
               </div>
             </div>
+            <textarea
+              value={ms.prompt}
+              onChange={(e) => handlePromptChange(e.target.value)}
+              placeholder="Describe the livery design…"
+              rows={5}
+              className="w-full px-2.5 py-2 text-[13px] bg-bg-input border border-border-default rounded text-text-primary placeholder-text-muted focus:outline-none focus:border-accent resize-none transition-colors"
+            />
+          </div>
+
+          {/* Auto-enhance toggle */}
+          <div className="flex items-center justify-between py-2 px-3 bg-bg-card rounded border border-border-default">
+            <div>
+              <div className="text-[13px] font-medium text-text-primary flex items-center gap-1">Auto-enhance <InfoTooltip position="right" maxWidth={300}>
+                <div>Automatically improves your prompt with AI before each generation — adding detail and structure without changing your intent.</div>
+                <div className="mt-1.5 pt-1.5 border-t border-border-default text-text-muted">Uses <span className="text-text-secondary">Gemini Flash Lite</span> (text-only) at ~$0.10 / 1M tokens. A typical enhancement costs less than $0.001.</div>
+              </InfoTooltip></div>
+              <div className="text-[11px] text-text-muted">AI-improve prompt before generating</div>
+            </div>
+            <Toggle checked={autoEnhance} onChange={(v) => { setAutoEnhance(v); saveSession?.({ last_auto_enhance: v }); }} id="autoEnhance" size="sm" />
+          </div>
+
+          {/* Auto-iterate toggle (modify mode only) */}
+          {mode === 'modify' && (
+            <div className="flex items-center justify-between py-2 px-3 bg-bg-card rounded border border-border-default">
+              <div>
+                <div className="text-[13px] font-medium text-text-primary flex items-center gap-1">Auto-iterate <InfoTooltip position="right" maxWidth={260} text="When enabled, the most recently generated livery is automatically used as the base texture for the next generation — so you can keep refining without manually re-uploading." /></div>
+                <div className="text-[11px] text-text-muted">Loads result as base for next generation</div>
+              </div>
+              <Toggle checked={iterateEnabled} onChange={setIterateEnabled} id="iterateToggle" />
+            </div>
           )}
+
+        </div>
+        </div>
+
+        {/* Fixed bottom section — model selector + generate button */}
+        <div className="border-t border-border-default p-3 flex flex-col gap-3">
+          {/* Model selector — via ModelSelector component */}
+          <ModelSelector
+            model={model}
+            onModelChange={onModelChange}
+            is2K={is2K}
+            onIs2KChange={onIs2KChange}
+            cost={cost}
+            config={config}
+          />
+
+          {/* Auto-upscale toggle */}
+          {showUpscaleToggle && (
+            <div className="flex items-center justify-between">
+              <span className="text-[13px] text-text-secondary flex items-center gap-1">Auto-upscale 1K→2K <InfoTooltip position="right" maxWidth={280} text="After generating at 1K, runs Real-ESRGAN 4× upscaling on your NVIDIA GPU to produce a crisp 2048×2048 texture. The cheapest way to get 2K-quality results (~$0.067 with GPU vs ~$0.101 for Flash 2K)." /></span>
+              <Toggle checked={autoUpscale} onChange={onAutoUpscaleChange} id="upscaleResult" size="sm" />
+            </div>
+          )}
+          {showUpscaleDisabled && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-bg-card rounded border border-border-default text-[11px] text-text-muted">
+              <span className="flex-1">GPU Upscale unavailable</span>
+              <InfoTooltip position="left" maxWidth={300}>
+                <div className="space-y-1.5">
+                  <p className="font-semibold text-text-primary">GPU upscaling requires a custom build</p>
+                  <p>To enable Real-ESRGAN 4× upscaling you need an NVIDIA GPU (6+ GB VRAM) and must launch with GPU dependencies installed:</p>
+                  <p className="font-mono text-accent text-[10px]">start.bat --gpu</p>
+                  <p>If you are using the pre-built .exe, see the <strong className="text-text-primary">Building the EXE</strong> section of the README for instructions on creating a GPU-enabled build.</p>
+                </div>
+              </InfoTooltip>
+            </div>
+          )}
+
+          {/* Progress bar (visible during generation) */}
+          <GenerationProgress
+            generating={generating}
+            elapsedSeconds={elapsedSeconds}
+            onAbort={onAbort}
+          />
 
           <Button
             variant="primary"
@@ -841,15 +808,28 @@ export function GenerateTab({
           prompt={lastResult?.prompt}
           context={lastResult?.context}
           conversationLog={lastResult?.conversation_log}
-          onDeploy={lastResult && hasCustomerId ? () => onDeploy?.(lastResult.livery_path, selectedCar, config?.customer_id) : undefined}
+          onDeploy={lastResult && hasCustomerId ? () => handleDeploy?.(lastResult.livery_path, selectedCar, config?.customer_id) : undefined}
           deploying={deploying}
+          onLoadAsBase={lastResult?.livery_path ? () => {
+            setBaseOverride?.(lastResult.livery_path);
+          } : undefined}
           onIterate={lastResult?.livery_path ? () => {
             setMode('modify');
             setIterateEnabled(true);
-            onSetBaseOverride?.(lastResult.livery_path);
-            onSaveSession?.({ last_mode: 'modify' });
+            setBaseOverride?.(lastResult.livery_path);
+          } : undefined}
+          onRegenerate={lastResult ? () => {
+            setMode('new');
+            setModeState(prev => ({ ...prev, new: { ...prev.new, prompt: lastResult.prompt || '', context: lastResult.context || '' } }));
+            saveSession?.({ last_prompt_new: lastResult.prompt || '', last_context_new: lastResult.context || '' });
+          } : undefined}
+          onMakeSpec={lastResult?.livery_path ? () => {
+            setBaseOverride?.(lastResult.livery_path);
+            onNavigateToSpecular?.();
           } : undefined}
           generating={generating}
+          onNotify={() => {}} 
+          onSwitchTab={() => {}}
         />
       </div>
       </>
@@ -878,8 +858,7 @@ export function GenerateTab({
         isOpen={showReferenceExamples}
         onClose={() => setShowReferenceExamples(false)}
         onSelect={(text) => {
-          setReferenceContext(text);
-          onSaveSession?.({ reference_context: text });
+          updateModeField(mode, 'referenceContext', text);
           setShowReferenceExamples(false);
         }}
       />

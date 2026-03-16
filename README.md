@@ -2,7 +2,7 @@
 
 <img src="icon.png" alt="Livery AI Studio Logo" width="100" height="100">
 
-A Windows desktop app that generates custom iRacing car liveries using Google Gemini AI — describe your design in plain English, get a race-ready texture, and have it auto-deployed to iRacing in seconds.
+A Windows desktop app that generates custom iRacing car liveries using Google Gemini AI — describe your design in plain English, get somewhat usable livery texture, and have it auto-deployed to iRacing in seconds.
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue) ![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey) ![AI](https://img.shields.io/badge/AI-Google%20Gemini-orange) [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0) [![Tests](https://github.com/jamesdhooks/livery-ai-studio/actions/workflows/test.yml/badge.svg)](https://github.com/jamesdhooks/livery-ai-studio/actions/workflows/test.yml)
 
@@ -60,7 +60,7 @@ The app runs as a native desktop window (Flask + pywebview). Fill in the form, c
 
 ## Features
 
-- **AI Livery Generation** — describe your design in plain English, get a race-ready texture
+- **AI Livery Generation** — describe your design in plain English, get a workable livery texture
 - **Auto Preview** — auto-copies the TGA to iRacing for instant in-game preview
 - **History Browser** — browse, reload, iterate on, and upscale past liveries
 - **GPU Upscaling** *(optional)* — Real-ESRGAN 4× upscale for crisp 2048×2048 textures
@@ -148,11 +148,22 @@ r. **Make tweaks** using the "Modify" function in the generate tab, make targete
 | `--gpu` | Install GPU upscaling (NVIDIA required, CUDA 12 default) |
 | `--gpu --cuda 11` | CUDA 11.8 for RTX 30xx |
 | `--gpu --cuda 12` | CUDA 12.4 for RTX 40xx / 50xx |
+| `--gpu --cuda 50` | CUDA 12.8 nightly for RTX 50xx / Blackwell |
 | `--port 8080` | Use a custom port (default: 5199) |
 | `--skip-install` | Skip `pip install` for faster restart |
 | `--build-frontend` | Rebuild the React UI (requires Node.js) |
+| `--web-only` | Launch in browser only (skip native pywebview window) |
+| `--auto-load` | **Dev mode:** HMR + hot reload (implies `--web-only`, requires Node.js) |
 
 **GPU setup:** `start.bat --gpu` installs PyTorch + Real-ESRGAN, downloads model weights (~67 MB), and patches a known torchvision compatibility issue automatically.
+
+**Frontend development:** `start.bat --auto-load` starts the Vite dev server with hot module reload. The Flask backend and frontend dev server run simultaneously on ports 5000 and 5173 respectively. Edit frontend files and see changes instantly without rebuilding.
+
+**Examples:**
+- `start.bat --gpu --build-frontend` — Install GPU + rebuild frontend
+- `start.bat --web-only --port 8080` — Browser-only mode on custom port
+- `start.bat --skip-install --web-only` — Quick restart in browser mode
+- `start.bat --auto-load` — Dev server with HMR for frontend development
 
 Run `python setup.py --check` to verify your upscale setup.
 

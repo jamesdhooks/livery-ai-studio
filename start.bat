@@ -13,6 +13,8 @@ setlocal EnableDelayedExpansion
 ::   start.bat --port 8080           Use a custom port
 ::   start.bat --skip-install        Skip pip install (faster restart)
 ::   start.bat --build-frontend      Rebuild the React frontend (requires Node.js)
+::   start.bat --web-only            Launch in browser instead of pywebview window
+::   start.bat --auto-load           Dev mode: HMR + hot reload (implies --web-only)
 ::
 :: NOTE: The pre-built frontend is included in static/ — Node.js is NOT
 :: required to run the app. Use --build-frontend only if you have modified
@@ -28,6 +30,8 @@ set "INSTALL_GPU=0"
 set "CUDA_VER=12"
 set "SKIP_INSTALL=0"
 set "BUILD_FRONTEND=0"
+set "WEB_ONLY=0"
+set "AUTO_LOAD=0"
 
 :: Parse arguments
 :parse_args
@@ -35,6 +39,8 @@ if "%~1"=="" goto done_args
 if /i "%~1"=="--gpu"             ( set "INSTALL_GPU=1"    & shift & goto parse_args )
 if /i "%~1"=="--skip-install"    ( set "SKIP_INSTALL=1"   & shift & goto parse_args )
 if /i "%~1"=="--build-frontend"  ( set "BUILD_FRONTEND=1" & shift & goto parse_args )
+if /i "%~1"=="--web-only"        ( set "WEB_ONLY=1"       & shift & goto parse_args )
+if /i "%~1"=="--auto-load"       ( set "AUTO_LOAD=1" & set "WEB_ONLY=1" & shift & goto parse_args )
 if /i "%~1"=="--cuda"         ( set "CUDA_VER=%~2"   & shift & shift & goto parse_args )
 if /i "%~1"=="--port"         ( set "PORT=%~2"        & shift & shift & goto parse_args )
 shift & goto parse_args
@@ -153,8 +159,36 @@ echo  Patching basicsr for torchvision compatibility...
 
 :post_gpu
 
-:: ── Frontend build (optional — only needed after editing frontend/ sources) ──
-if "%BUILD_FRONTEND%"=="1" (
+:: ── Frontend build/dev (optional — only needed after editing frontend/ sources) ──
+if "%AUTO_LOAD%"=="1" (
+    echo.
+    echo  Starting frontend dev server with HMR...
+    where node >nul 2>&1
+    if %errorlevel% neq 0 (
+        echo  [ERROR] Node.js not found. Install from https://nodejs.org
+        pause
+        exit /b 1
+    )
+    if not exist "%APP_DIR%frontend\node_modules" (
+        echo  Installing frontend dependencies...
+        cd /d "%APP_DIR%frontend"
+        call npm install
+        if %errorlevel% neq 0 (
+            echo  [ERROR] npm install failed.
+            pause
+            exit /b 1
+        )
+    )
+    cd /d "%APP_DIR%frontend"
+    echo  + Frontend dev server starting (HMR enabled)
+    echo.
+    REM Start Flask in background, then Vite dev server in foreground
+    start "Livery AI Studio - Flask Backend" /B "%VENV_DIR%\Scripts\python.exe" "%APP_DIR%app.py"
+    timeout /t 2 /nobreak >nul
+    echo  + Flask backend started, opening http://localhost:5173...
+    call npm run dev
+    exit /b 0
+) else if "%BUILD_FRONTEND%"=="1" (
     echo.
     echo  Building React frontend...
     where node >nul 2>&1
@@ -197,6 +231,7 @@ echo  ======================================
 echo.
 
 set "FLASK_PORT=%PORT%"
+set "WEB_ONLY=%WEB_ONLY%"
 "%VENV_DIR%\Scripts\python.exe" "%APP_DIR%app.py"
 
 echo.

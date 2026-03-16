@@ -87,6 +87,15 @@ class UpscaleService extends BaseService {
   }
 
   /**
+   * Extract R, G, B channels from an image as individual grayscale thumbnails.
+   * @param {string} path - Server-side path to the image (TGA/PNG).
+   * @returns {Promise<{r: string, g: string, b: string}>} Base64-encoded JPEG for each channel.
+   */
+  async extractChannels(path) {
+    return this.post('/extract-channels', { path });
+  }
+
+  /**
    * Open the native file-picker dialog.
    * @param {string[]} [fileTypes] - Filter strings (e.g. ['Image Files (*.png;*.jpg;*.tga)']).
    * @returns {Promise<{path: string}>}

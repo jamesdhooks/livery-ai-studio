@@ -80,6 +80,11 @@ def build_target_filename(customer_id: str | int) -> str:
     return f"car_{customer_id}.tga"
 
 
+def build_spec_target_filename(customer_id: str | int) -> str:
+    """Return the expected iRacing specular map filename for a customer ID."""
+    return f"car_spec_{customer_id}.tga"
+
+
 def deploy_livery(
     tga_path: str,
     car_name: str,
@@ -116,6 +121,45 @@ def deploy_livery(
 
     shutil.copy2(tga_src, dest)
     print(f"[deploy_livery] ✓ Deployed to {dest}")
+    return dest
+
+
+def deploy_spec_livery(
+    tga_path: str,
+    car_name: str,
+    customer_id: str | int,
+    dry_run: bool = False,
+) -> Path:
+    """
+    Copy tga_path into the correct iRacing paint folder as a specular map.
+    The file is named car_spec_<customer_id>.tga.
+    Returns the destination path.
+    """
+    tga_src = Path(tga_path)
+    if not tga_src.exists():
+        raise FileNotFoundError(f"Source TGA not found: {tga_src}")
+
+    car_folder  = resolve_car_folder(car_name)
+    paint_dir   = get_iracing_paint_dir(car_folder)
+    target_name = build_spec_target_filename(customer_id)
+    dest        = paint_dir / target_name
+
+    print(f"[deploy_spec_livery] Source : {tga_src}")
+    print(f"[deploy_spec_livery] Target : {dest}")
+
+    if dry_run:
+        print("[deploy_spec_livery] DRY RUN — no files written.")
+        return dest
+
+    paint_dir.mkdir(parents=True, exist_ok=True)
+
+    if dest.exists():
+        backup = dest.with_suffix(".tga.bak")
+        print(f"[deploy_spec_livery] Backing up existing → {backup}")
+        shutil.copy2(dest, backup)
+
+    shutil.copy2(tga_src, dest)
+    print(f"[deploy_spec_livery] ✓ Deployed to {dest}")
     return dest
 
 

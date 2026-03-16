@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '../common/Button';
-import { StatusBar } from '../common/StatusBar';
 import { WipeDataModal } from '../modals/WipeDataModal';
 import upscaleService from '../../services/UpscaleService';
+import { useToastContext } from '../../context/ToastContext';
+import { useConfigContext } from '../../context/ConfigContext';
 
-export function SettingsTab({ config, onSaveConfig, loading }) {
+export function SettingsTab() {
+  const { toast } = useToastContext();
+  const { config, loading, saveConfig: onSaveConfig } = useConfigContext();
   const [apiKey, setApiKey] = useState('');
   const [apiKeyMasked, setApiKeyMasked] = useState(true);
   const [customerId, setCustomerId] = useState('');
@@ -12,7 +15,6 @@ export function SettingsTab({ config, onSaveConfig, loading }) {
   const [priceFlash2k, setPriceFlash2k] = useState('');
   const [pricePro, setPricePro] = useState('');
   const [dataDir, setDataDir] = useState('');
-  const [saveStatus, setSaveStatus] = useState(null);
   const [showWipeModal, setShowWipeModal] = useState(false);
 
   useEffect(() => {
@@ -47,10 +49,9 @@ export function SettingsTab({ config, onSaveConfig, loading }) {
       updates.gemini_api_key = apiKey;
     }
     const ok = await onSaveConfig?.(updates);
-    setSaveStatus(
-      ok
-        ? { type: 'success', message: 'Settings saved!' }
-        : { type: 'error', message: 'Failed to save settings' }
+    toast(
+      ok ? 'Settings saved!' : 'Failed to save settings',
+      ok ? 'success' : 'error'
     );
   };
 
@@ -167,8 +168,6 @@ export function SettingsTab({ config, onSaveConfig, loading }) {
           )}
         </div>
       </div>
-
-      <StatusBar status={saveStatus} onDismiss={() => setSaveStatus(null)} />
 
       <Button variant="primary" size="md" onClick={handleSave} loading={loading}>
         {loading ? 'Loading Settings…' : 'Save Settings'}

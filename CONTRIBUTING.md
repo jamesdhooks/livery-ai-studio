@@ -35,7 +35,15 @@ discuss the approach before you invest time.
    cd frontend
    npm install
    ```
-3. Start the dev servers:
+3. Start the dev servers. **Choose one:**
+
+   **Option A — Quick start (recommended):**
+   ```bash
+   start.bat --auto-load
+   ```
+   This launches both the Flask backend and Vite dev server in one command with HMR enabled.
+
+   **Option B — Manual control (two terminals):**
    ```bash
    # Terminal 1 — Flask backend
    python app.py
@@ -44,6 +52,7 @@ discuss the approach before you invest time.
    cd frontend
    npm run dev
    ```
+   Opens at http://localhost:5173 with HMR, proxies `/api/*` to http://localhost:5000 (Flask).
 
 ## Development Workflow
 

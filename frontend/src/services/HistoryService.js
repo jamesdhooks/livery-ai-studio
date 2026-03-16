@@ -27,6 +27,16 @@ class HistoryService extends BaseService {
   async deleteHistory(id) {
     return this.delete(`/history/${id}`);
   }
+
+  /**
+   * Update fields on a history sidecar JSON.
+   * @param {string} path - Absolute path to the TGA file.
+   * @param {Object} updates - Fields to update (e.g. { car_folder, car }).
+   * @returns {Promise<{status: string, updated: Object}>}
+   */
+  async updateItem(path, updates) {
+    return this.post('/history/update', { path, updates });
+  }
 }
 
 export default new HistoryService();

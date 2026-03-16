@@ -23,7 +23,7 @@ from pathlib import Path
 from flask import Blueprint, jsonify, request
 
 from server.config import get_data_dir, get_liveries_dir, get_thumbnails_dir, load_config
-from server.deploy import deploy_livery, get_iracing_paint_dir, resolve_car_folder
+from server.deploy import deploy_livery, deploy_spec_livery, get_iracing_paint_dir, resolve_car_folder
 
 bp = Blueprint("api_history", __name__)
 
@@ -72,7 +72,8 @@ def api_history():
                 for key in ("prompt", "mode", "model", "car", "car_folder", "customer_id",
                             "wireframe_path", "base_texture_path", "auto_deploy",
                             "api_requests", "estimated_cost", "cost_breakdown",
-                            "conversation_log", "generated_at"):
+                            "conversation_log", "generated_at",
+                            "entry_type", "source_livery_path", "spec_maps", "iterations"):
                     item[key] = meta.get(key)
                 if meta.get("upscaled"):
                     item["upscaled"] = True
@@ -82,6 +83,39 @@ def api_history():
         if len(items) >= 50:
             break
     return jsonify(items)
+
+
+@bp.route("/api/history/update", methods=["POST"])
+def api_history_update():
+    """Update fields on a history sidecar JSON (e.g. car_folder, car)."""
+    data     = request.json or {}
+    tga_path = data.get("path", "").strip()
+    updates  = data.get("updates", {})
+
+    if not tga_path:
+        return jsonify({"error": "No path provided"}), 400
+    sidecar = Path(tga_path).with_suffix(".json")
+    if not sidecar.exists():
+        return jsonify({"error": "No sidecar JSON found"}), 404
+
+    # Safety: only allow updating whitelisted fields
+    allowed = {"car", "car_folder"}
+    filtered = {k: v for k, v in updates.items() if k in allowed}
+    if not filtered:
+        return jsonify({"error": "No valid fields to update"}), 400
+
+    try:
+        sidecar.resolve().relative_to(get_liveries_dir().resolve())
+    except ValueError:
+        return jsonify({"error": "Cannot modify files outside the liveries directory"}), 403
+
+    try:
+        entry = json.loads(sidecar.read_text(encoding="utf-8"))
+        entry.update(filtered)
+        sidecar.write_text(json.dumps(entry, indent=2), encoding="utf-8")
+        return jsonify({"status": "ok", "updated": filtered})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @bp.route("/api/history/delete", methods=["POST"])
@@ -154,6 +188,33 @@ def api_deploy():
 
     try:
         dest = deploy_livery(tga_path=tga_path, car_name=car_name, customer_id=customer_id)
+        return jsonify({"status": "ok", "deployed_to": str(dest)})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/api/deploy-spec", methods=["POST"])
+def api_deploy_spec():
+    """Deploy a specular map TGA to iRacing as car_spec_<id>.tga."""
+    data        = request.json or {}
+    tga_path    = data.get("path", "").strip()
+    car_name    = data.get("car_folder", "").strip()
+    customer_id = data.get("customer_id", "").strip()
+
+    if not tga_path:
+        return jsonify({"error": "No TGA path provided"}), 400
+    if not Path(tga_path).exists():
+        return jsonify({"error": f"TGA file not found: {tga_path}"}), 404
+    if not car_name:
+        return jsonify({"error": "No car folder specified"}), 400
+
+    config = load_config()
+    customer_id = customer_id or config.get("customer_id", "").strip()
+    if not customer_id:
+        return jsonify({"error": "No customer ID — set it in Settings"}), 400
+
+    try:
+        dest = deploy_spec_livery(tga_path=tga_path, car_name=car_name, customer_id=customer_id)
         return jsonify({"status": "ok", "deployed_to": str(dest)})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -321,5 +382,36 @@ def api_image_data():
         buf = io.BytesIO()
         Image.open(path).save(buf, format="PNG")
         return jsonify({"base64": base64.b64encode(buf.getvalue()).decode()})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/api/extract-channels", methods=["POST"])
+def api_extract_channels():
+    """Extract R, G, B channels from an image and return them as individual
+    grayscale JPEGs (base64-encoded, 256 px thumbnails).
+
+    Request: { "path": "<absolute path to TGA/PNG>" }
+    Response: { "r": "<base64 jpg>", "g": "<base64 jpg>", "b": "<base64 jpg>" }
+    """
+    from PIL import Image
+    data = request.json or {}
+    path = data.get("path", "")
+    if not path or not Path(path).exists():
+        return jsonify({"error": "File not found"}), 404
+
+    try:
+        img = Image.open(path).convert("RGB")
+        r, g, b = img.split()
+
+        result = {}
+        for name, channel in [("r", r), ("g", g), ("b", b)]:
+            thumb = channel.copy()
+            thumb.thumbnail((256, 256))
+            buf = io.BytesIO()
+            thumb.save(buf, format="JPEG", quality=80)
+            result[name] = base64.b64encode(buf.getvalue()).decode()
+
+        return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500

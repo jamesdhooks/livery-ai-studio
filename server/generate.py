@@ -226,12 +226,6 @@ TECHNICAL REQUIREMENTS (non-negotiable):
     else:
         instruction_label = "LIVERY DESIGN BRIEF:"
 
-    # ── Car context ───────────────────────────────────────────────────────────
-    car_block = ""
-    if car_display:
-        car_block = f"""CAR: {car_display}
-This livery is for the {car_display} as it appears in iRacing. Keep body proportions, panel shapes, and aero elements consistent with this car's known silhouette when placing graphics.""".strip()
-
     # ── Wireframe closing reminder (injected after user brief) ──────────────
     wireframe_closing = ""
     if has_wireframe:
@@ -250,8 +244,6 @@ Before rendering any pixel, re-examine IMAGE 1 (the wireframe). Every colour, st
         parts.append(wireframe_block)
     if reference_block:
         parts.append(reference_block)
-    if car_block:
-        parts.append(car_block)
     parts.append(task_block)
     parts.append(technical_block)
     if base_structure_reminder:
@@ -435,6 +427,182 @@ def generate_livery(
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     generated_image.save(output_path, format="TGA")
     print(f"[generate_livery] Saved → {output_path}")
+    return output_path, conversation_log
+
+
+# ─── Specular map generation ──────────────────────────────────────────────────
+
+def build_specular_prompt(
+    user_prompt: str,
+    has_wireframe: bool = True,
+    has_livery: bool = False,
+) -> str:
+    """Build the prompt for generating a specular/reflective map."""
+
+    # ── Wireframe block ──────────────────────────────────────────────────────
+    wireframe_block = ""
+    if has_wireframe:
+        wireframe_block = """IMAGE 1 — UV WIREFRAME (structural guide only):
+This image shows the UV layout and panel boundaries of the car. Use it ONLY to determine where each surface area (roof, doors, bonnet, bumpers, tyres, etc.) is located in UV space. Do NOT copy any visual content from this image.""".strip()
+
+    # ── Livery reference block ────────────────────────────────────────────────
+    livery_block = ""
+    if has_livery:
+        livery_block = f"""IMAGE {'2' if has_wireframe else '1'} — LIVERY TEXTURE (material reference):
+This is the car's colour livery texture. Use it ONLY as a reference to identify which areas are painted panels, window glass, rubber tyres, carbon fibre, metal trim, etc. Do NOT copy the colours or graphics — only use it to distinguish material regions for the specular map.""".strip()
+
+    # ── Task block ───────────────────────────────────────────────────────────
+    task_block = """TASK — GENERATE UV SPECULAR / REFLECTIVITY MAP:
+You are generating a MATERIAL PROPERTY MAP — not a colour image. This map encodes surface reflectivity and shininess information across the car's UV layout.
+
+Specular map channel encoding:
+- RED channel   → Specular intensity (how much light the surface reflects): bright white = highly reflective, black = non-reflective
+- GREEN channel → Gloss / roughness (sharpness of reflection): bright = glossy mirror-like, dark = diffuse/matte
+- BLUE channel  → Clearcoat layer presence: bright white = clearcoat (painted panels), dark/black = no clearcoat (rubber, bare metal)
+
+Material guide for typical racing cars:
+- Painted bodywork panels (doors, roof, bonnet, bumpers): R=200–240, G=200–230, B=220–255 (high specular, glossy, clearcoat)
+- Window glass: R=180–220, G=200–240, B=50–80 (reflective, very glossy, no clearcoat)
+- Rubber tyres (black cutout areas): R=10–30, G=10–20, B=0–10 (near zero — absorbs light)
+- Carbon fibre / weave areas: R=80–120, G=60–100, B=30–60 (moderate spec, semi-gloss, no clearcoat)
+- Bare metal trim / exhausts: R=160–200, G=120–160, B=20–50 (metallic spec, no clearcoat)
+- Decal / sponsor areas: same underlying material spec as panel beneath, not altered by the decal
+- Matte paint / satin livery areas: R=100–160, G=60–100, B=160–200 (reduced gloss but still clearcoated)""".strip()
+
+    # ── Technical block ───────────────────────────────────────────────────────
+    technical_block = """TECHNICAL REQUIREMENTS (non-negotiable):
+- Output format: flat UV texture map, exactly 2048 × 2048 pixels, square (1:1 aspect ratio)
+- This is a DATA MAP — there must be NO visible 3D shading, lighting bakes, gradients from imagined light sources, or decorative effects
+- Colour transitions between material zones should follow UV panel boundaries cleanly — use the wireframe to define the edges
+- Black background / wheel arches / glass cutout regions: R=0, G=0, B=0 (no reflectivity at all)
+- No drop shadows, no glows, no artistic interpretation — this is a technical material mask
+- Do NOT include any background, studio floor, car 3D model, mockup frame, or scene context — output the raw texture map ONLY""".strip()
+
+    # ── Assemble ─────────────────────────────────────────────────────────────
+    parts = ["You are a technical artist generating a UV specular/reflectivity map for an iRacing car livery.\n"]
+    if wireframe_block:
+        parts.append(wireframe_block)
+    if livery_block:
+        parts.append(livery_block)
+    parts.append(task_block)
+    parts.append(technical_block)
+    parts.append(f"SPECULAR MAP INSTRUCTION:\n{user_prompt}")
+
+    if has_wireframe:
+        parts.append("""FINAL REMINDER — UV STRUCTURE IS MANDATORY:
+Re-examine the wireframe image before placing any values. Every material zone boundary in your output must align with the panel boundaries shown in the wireframe. The material transitions must follow the UV layout exactly.""".strip())
+
+    return "\n\n".join(parts)
+
+
+def generate_spec_map(
+    prompt: str,
+    wireframe_path: str,
+    output_path: str,
+    livery_path: str | None = None,
+    model: str = MODEL_FAST,
+    api_key: str | None = None,
+    resolution_2k: bool = True,
+) -> tuple[str, dict]:
+    """Generate a specular map using Gemini and save it as a TGA file.
+
+    Returns (output_path, conversation_log).
+    """
+    if not api_key:
+        api_key = os.environ.get("GEMINI_API_KEY", "")
+    if not api_key:
+        raise ValueError("No Gemini API key provided.")
+
+    client = genai.Client(api_key=api_key)
+
+    has_wireframe = bool(wireframe_path and Path(wireframe_path).exists())
+    has_livery = bool(livery_path and Path(livery_path).exists())
+
+    full_prompt = build_specular_prompt(
+        user_prompt=prompt,
+        has_wireframe=has_wireframe,
+        has_livery=has_livery,
+    )
+
+    # ── Build contents list ──────────────────────────────────────────────────
+    contents: list = []
+    if has_wireframe:
+        wire_bytes = load_image_as_bytes(wireframe_path)
+        wire_mime = get_image_mime_type(wireframe_path)
+        contents.append(types.Part.from_bytes(data=wire_bytes, mime_type=wire_mime))
+
+    if has_livery:
+        livery_bytes = load_image_as_bytes(livery_path)
+        livery_mime = get_image_mime_type(livery_path)
+        contents.append(types.Part.from_bytes(data=livery_bytes, mime_type=livery_mime))
+
+    contents.append(full_prompt)
+
+    conversation_log = {
+        "full_system_prompt": full_prompt,
+        "images_sent": {
+            "wireframe": has_wireframe,
+            "livery": has_livery,
+        },
+        "model_response": None,
+    }
+
+    print(f"[generate_spec_map] Calling {model} …")
+    resolution = "2K" if (model == MODEL_PRO or resolution_2k) else "1K"
+    print(f"[generate_spec_map] Resolution: {resolution}")
+
+    response = client.models.generate_content(
+        model=model,
+        contents=contents,
+        config=types.GenerateContentConfig(
+            response_modalities=["IMAGE", "TEXT"],
+            image_config=types.ImageConfig(image_size=resolution),
+        ),
+    )
+
+    if not response.candidates:
+        reason = getattr(response, "prompt_feedback", None)
+        raise RuntimeError(f"Model returned no candidates. Feedback: {reason}")
+
+    candidate = response.candidates[0]
+    finish = getattr(candidate, "finish_reason", None)
+
+    if candidate.content is None or candidate.content.parts is None:
+        raise RuntimeError(
+            f"Model returned no content (finish_reason={finish}). "
+            "The prompt may have been blocked or quota exhausted."
+        )
+
+    generated_image: Image.Image | None = None
+    for part in candidate.content.parts:
+        if part.inline_data is not None:
+            generated_image = Image.open(io.BytesIO(part.inline_data.data))
+            generated_image.load()
+            break
+        if part.text:
+            print(f"[model] {part.text}")
+            conversation_log["model_response"] = part.text
+
+    if generated_image is None:
+        raise RuntimeError(
+            f"No image returned by model (finish_reason={finish}). "
+            "Check API key, quota, and prompt content."
+        )
+
+    print(f"[generate_spec_map] Raw image size from model: {generated_image.size}")
+
+    # Resize to 2048×2048 (no Real-ESRGAN for spec maps — preserve data fidelity)
+    if generated_image.size != (2048, 2048):
+        print(f"[generate_spec_map] Resizing from {generated_image.size} to 2048×2048 …")
+        generated_image = generated_image.resize((2048, 2048), Image.LANCZOS)
+
+    output_path = str(output_path)
+    if not output_path.lower().endswith(".tga"):
+        output_path += ".tga"
+
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    generated_image.save(output_path, format="TGA")
+    print(f"[generate_spec_map] Saved → {output_path}")
     return output_path, conversation_log
 
 

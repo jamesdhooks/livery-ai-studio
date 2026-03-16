@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ThemeToggle } from '../common/ThemeToggle';
 
 // ── Tab icon components ───────────────────────────────────────────────────────
@@ -84,14 +84,74 @@ const TABS = [
   { id: 'history',         label: 'History',          Icon: IconClock },
   { id: 'upscale',         label: 'Upscale',          Icon: IconZap },
   { id: 'sponsors',        label: 'Sponsors',         Icon: IconBadge, soon: true },
-  { id: 'specular',        label: 'Specular',         Icon: IconShine, soon: true },
+  { id: 'specular',        label: 'Specular',         Icon: IconShine },
   { id: 'cars',            label: 'Cars',             Icon: IconCar },
   { id: 'settings',        label: 'Settings',         Icon: IconCog },
 ];
 
+// ── Transaction Flash — animated chip that appears near spend button ──────────
+
+function TransactionFlash({ transaction }) {
+  const [visible, setVisible] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const timerRef = useRef(null);
+  const leaveRef = useRef(null);
+
+  useEffect(() => {
+    if (!transaction) return;
+    // Reset
+    clearTimeout(timerRef.current);
+    clearTimeout(leaveRef.current);
+    setLeaving(false);
+    setVisible(true);
+
+    // Auto-dismiss after 2.8s with a 0.4s fade-out
+    timerRef.current = setTimeout(() => {
+      setLeaving(true);
+      leaveRef.current = setTimeout(() => setVisible(false), 400);
+    }, 2800);
+
+    return () => {
+      clearTimeout(timerRef.current);
+      clearTimeout(leaveRef.current);
+    };
+  }, [transaction?.id]);
+
+  if (!visible || !transaction) return null;
+
+  const isEstimate = transaction.type === 'estimated';
+  const isCancelled = transaction.type === 'cancelled';
+  const isActual = transaction.type === 'actual';
+
+  const chipStyle = isCancelled
+    ? 'border-error/40 bg-error/10 text-error shadow-error/20'
+    : isActual
+      ? 'border-success/50 bg-success/10 text-success shadow-success/20'
+      : 'border-warning/50 bg-warning/10 text-warning shadow-warning/20';
+
+  const label = isCancelled ? 'cancelled' : isActual ? 'charged' : 'est.';
+  const prefix = isCancelled ? '~' : isActual ? '' : '~';
+
+  return (
+    <div
+      className={`
+        flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-semibold
+        shadow-md pointer-events-none select-none whitespace-nowrap
+        transition-all duration-400
+        ${chipStyle}
+        ${leaving ? 'opacity-0 translate-y-1 scale-95' : 'opacity-100 translate-y-0 scale-100'}
+      `}
+      style={{ transition: leaving ? 'opacity 0.4s, transform 0.4s' : 'opacity 0.15s, transform 0.15s' }}
+    >
+      <span className="text-[10px] opacity-70">{label}</span>
+      <span>{prefix}${transaction.amount.toFixed(4)}</span>
+    </div>
+  );
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function TopBar({ activeTab, onTabChange, totalSpend, spendFilter = 'overall', onSpendingClick, historyLoading, theme, onThemeChange }) {
+export function TopBar({ activeTab, onTabChange, totalSpend, spendFilter = 'overall', onSpendingClick, historyLoading, generating = false, theme, onThemeChange, lastTransaction }) {
   const spendLabel = spendFilter === 'today' ? 'Today' : spendFilter === 'week' ? 'This Week' : 'Total';
   return (
     <header className="h-12 min-h-12 bg-bg-panel border-b border-border-default relative flex items-center px-3 flex-shrink-0 z-[100]">
@@ -155,11 +215,14 @@ export function TopBar({ activeTab, onTabChange, totalSpend, spendFilter = 'over
           </svg>
           Google AI Studio
         </a>
+
         <button
           onClick={onSpendingClick}
           disabled={historyLoading}
-          className={`flex items-center gap-1.5 px-2.5 h-[30px] rounded border border-border-default bg-bg-input text-[12px] text-text-secondary hover:text-text-primary hover:border-accent/40 transition-all duration-150 whitespace-nowrap ${
-            historyLoading ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+          className={`flex items-center gap-1.5 px-2.5 h-[30px] rounded border text-[12px] text-text-secondary hover:text-text-primary hover:border-accent/40 transition-all duration-300 whitespace-nowrap ${
+            historyLoading ? 'opacity-60 cursor-not-allowed bg-bg-input border-border-default' :
+            generating ? 'cursor-pointer bg-warning/5 border-warning/40 animate-pulse' :
+            'cursor-pointer bg-bg-input border-border-default'
           }`}
           title={historyLoading ? 'Loading history…' : 'View spending breakdown'}
         >
@@ -171,7 +234,9 @@ export function TopBar({ activeTab, onTabChange, totalSpend, spendFilter = 'over
           ) : (
             <>
               <span className="text-text-muted">Spent {spendLabel}:</span>
-              <span className="text-warning font-medium">~${totalSpend.toFixed(2)}</span>
+              <span className={`font-medium transition-colors duration-300 ${generating ? 'text-warning' : 'text-warning'}`}>
+                ~${totalSpend.toFixed(2)}
+              </span>
             </>
           )}
         </button>

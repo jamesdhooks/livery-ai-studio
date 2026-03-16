@@ -2,7 +2,9 @@ import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { Button } from '../common/Button';
 import carsService from '../../services/CarsService';
 import upscaleService from '../../services/UpscaleService';
-import { formatTimestamp } from '../../utils/helpers';
+import { formatTimestamp, getStarredCars, saveStarredCars } from '../../utils/helpers';
+import { useCarsContext } from '../../context/CarsContext';
+import { useHistoryContext } from '../../context/HistoryContext';
 
 // ── Small shared helpers ──────────────────────────────────────────────────────
 
@@ -510,7 +512,18 @@ function ImportLogPanel({ running, error, log, results, onDismiss }) {
 
 // ── Main CarsTab ──────────────────────────────────────────────────────────────
 
-export function CarsTab({ cars = [], selectedFolder, onSelectCar, getWireframeUrl, historyItems = [], onNavigateToHistory, starredCars = [], onStarredChange }) {
+export function CarsTab({ onNavigateToHistory }) {
+  // ── Contexts ─────────────────────────────────────────────────────────────
+  const { cars, selectedCar: selectedFolder, onCarChange: onSelectCar, getWireframeUrl } = useCarsContext();
+  const { items: historyItems } = useHistoryContext();
+
+  // Starred cars — managed via localStorage
+  const [starredCars, setStarredCars] = useState(() => [...getStarredCars()]);
+  const onStarredChange = useCallback((arr) => {
+    setStarredCars(arr);
+    saveStarredCars(new Set(arr));
+  }, []);
+
   const [query, setQuery] = useState('');
   const [selectedSlug, setSelectedSlug] = useState(selectedFolder || null);
 

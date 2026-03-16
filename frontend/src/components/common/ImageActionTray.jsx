@@ -12,6 +12,7 @@ import upscaleService from '../../services/UpscaleService';
  * @param {string}   [props.downloadName] - Filename for the download (default "livery.png")
  * @param {Function} [props.onDeploy]     - If provided, shows a Deploy button
  * @param {boolean}  [props.deploying]    - Loading state for deploy
+
  * @param {string}   [props.className]    - Extra wrapper classes
  */
 export function ImageActionTray({
@@ -81,6 +82,7 @@ export function ImageActionTray({
           </svg>
         </ActionBtn>
       )}
+
     </div>
   );
 }

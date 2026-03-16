@@ -1,22 +1,47 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { ImageActionTray } from '../common/ImageActionTray';
 import { LiveryDetailPanel } from '../common/LiveryDetailPanel';
 import { formatTimestamp } from '../../utils/helpers';
 import upscaleService from '../../services/UpscaleService';
+import { getFilename } from '../../utils/helpers';
+import { useHistoryContext } from '../../context/HistoryContext';
+import { useCarsContext } from '../../context/CarsContext';
+import { useUpscaleContext } from '../../context/UpscaleContext';
+import { useSpecularContext } from '../../context/SpecularContext';
+import { useConfigContext } from '../../context/ConfigContext';
+import { useToastContext } from '../../context/ToastContext';
 
 
 export function HistoryTab({
-  items,
-  loading,
-  onLoad,
-  onDelete,
-  onDeploy,
-  deploying,
   onIterateFrom,
+  onRegenerateFrom,
+  onNavigateToSpecular,
+  onSwitchTab,
 }) {
+  // ── Contexts ─────────────────────────────────────────────────────────────
+  const { items, loading, loadHistory, deleteItem: onDelete, updateItemCar: onUpdateItemCar } = useHistoryContext();
+  const { cars, setBaseOverride } = useCarsContext();
+  const { deploy: deployTexture, deploying } = useUpscaleContext();
+  const { deploySpec } = useSpecularContext();
+  const { config } = useConfigContext();
+  const { toast: onNotify } = useToastContext();
+
+  const onLoad = loadHistory;
+  const onDeploy = useCallback((path, carFolder, _cid) => {
+    deployTexture(path, carFolder, config?.customer_id);
+  }, [deployTexture, config?.customer_id]);
+  const onDeploySpec = useCallback((path, carFolder, _cid) => {
+    deploySpec(path, carFolder, config?.customer_id);
+  }, [deploySpec, config?.customer_id]);
+  const onLoadAsBase = useCallback((path) => {
+    setBaseOverride(path);
+  }, [setBaseOverride]);
   const [selectedId, setSelectedId] = useState(null);
   const [fullResUrl, setFullResUrl] = useState(null);
   const [loadingFullRes, setLoadingFullRes] = useState(false);
+  const [editingCar, setEditingCar] = useState(false);
+  const [carSearch, setCarSearch] = useState('');
+  const carDropdownRef = useRef(null);
 
   useEffect(() => {
     onLoad?.();
@@ -64,6 +89,31 @@ export function HistoryTab({
     }
   }, [selectedId, selectedItem?.livery_path]);
 
+  // Close car edit dropdown on click outside
+  useEffect(() => {
+    if (!editingCar) return;
+    const handler = (e) => {
+      if (carDropdownRef.current && !carDropdownRef.current.contains(e.target)) {
+        setEditingCar(false);
+        setCarSearch('');
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [editingCar]);
+
+  // Reset edit state when selection changes
+  useEffect(() => { setEditingCar(false); setCarSearch(''); }, [selectedId]);
+
+  const handleCarSelect = useCallback(async (carFolder, carDisplay) => {
+    if (!selectedItem) return;
+    const ok = await onUpdateItemCar?.(selectedItem.id, carFolder, carDisplay);
+    if (ok) {
+      setEditingCar(false);
+      setCarSearch('');
+    }
+  }, [selectedItem, onUpdateItemCar]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -85,12 +135,15 @@ export function HistoryTab({
   }
 
   const isProModel = selectedItem?.model?.toLowerCase().includes('pro');
+  const isSpecItem = selectedItem?.entry_type === 'spec' || selectedItem?.mode === 'spec';
+
   const meta = selectedItem
     ? [
-        { label: 'Car', value: selectedItem.display_name || selectedItem.car_folder },
+        { label: 'Car', value: selectedItem.display_name || selectedItem.car_folder, onEdit: onUpdateItemCar ? () => setEditingCar(true) : undefined },
+        { label: 'Type', value: isSpecItem ? 'Spec Map' : 'Livery', className: isSpecItem ? 'text-success' : 'text-text-primary' },
         { label: 'Model', value: selectedItem.model || '—', className: isProModel ? 'text-accent-wine' : 'text-accent' },
         { label: 'Resolution', value: selectedItem.resolution_2k ? '2K (2048×2048)' : '1K (1024×1024)', className: isProModel ? 'text-accent-wine/80' : 'text-accent/80' },
-        { label: 'Cost', value: selectedItem.cost != null ? `$${parseFloat(selectedItem.cost).toFixed(2)}` : '—', className: 'text-warning' },
+        { label: 'Cost', value: selectedItem.cost != null ? `$${parseFloat(selectedItem.cost).toFixed(4)}` : '—', className: 'text-warning' },
         { label: 'Generated', value: selectedItem.timestamp ? formatTimestamp(selectedItem.timestamp * 1000) : '—' },
         { label: 'File', value: selectedItem.livery_path || '—' },
       ]
@@ -113,21 +166,192 @@ export function HistoryTab({
       </div>
 
       {/* Right panel — detail */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-bg-dark">
+      <div className="flex-1 flex flex-col overflow-hidden bg-bg-dark relative">
         {selectedItem ? (
-          <LiveryDetailPanel
-            imageUrl={fullResUrl || selectedItem.preview_url}
-            imagePath={selectedItem.livery_path}
-            downloadName={`${selectedItem.display_name || selectedItem.car_folder}.png`}
-            prompt={selectedItem.prompt}
-            context={selectedItem.context}
-            conversationLog={selectedItem.conversation_log}
-            meta={meta}
-            onDeploy={() => onDeploy?.(selectedItem.livery_path, selectedItem.car_folder, null)}
-            deploying={deploying}
-            onIterate={() => onIterateFrom?.(selectedItem)}
-            onDelete={() => { onDelete?.(selectedItem.id); setSelectedId(null); }}
-          />
+          <>
+            <LiveryDetailPanel
+              imageUrl={fullResUrl}
+              previewUrl={selectedItem.preview_url}
+              imagePath={selectedItem.livery_path}
+              downloadName={`${selectedItem.display_name || selectedItem.car_folder}${isSpecItem ? '_spec' : ''}.png`}
+              prompt={selectedItem.prompt}
+              context={selectedItem.context}
+              conversationLog={selectedItem.conversation_log}
+              meta={meta}
+              onDeploy={isSpecItem
+                ? (onDeploySpec ? () => onDeploySpec?.(selectedItem.livery_path, selectedItem.car_folder, null) : undefined)
+                : () => onDeploy?.(selectedItem.livery_path, selectedItem.car_folder, null)
+              }
+              deployLabel={isSpecItem ? 'Deploy Spec to iRacing' : 'Deploy to iRacing'}
+              deploying={deploying}
+              onLoadAsBase={!isSpecItem && selectedItem.livery_path ? () => {
+                onLoadAsBase?.(selectedItem.livery_path);
+                onSwitchTab?.('generate');
+              } : undefined}
+              onIterate={!isSpecItem ? () => onIterateFrom?.(selectedItem) : undefined}
+              onRegenerate={!isSpecItem && (selectedItem?.prompt || selectedItem?.context) ? () => onRegenerateFrom?.(selectedItem) : undefined}
+              onMakeSpec={!isSpecItem && selectedItem.livery_path ? () => {
+                onNavigateToSpecular?.(selectedItem.livery_path, selectedItem.car_folder);
+              } : undefined}
+              onDelete={() => { onDelete?.(selectedItem.id); setSelectedId(null); }}
+              onNotify={onNotify}
+              onSwitchTab={onSwitchTab}
+            />
+            {/* ── Inline car edit dropdown ───────────────────────────── */}
+            {editingCar && (
+              <div ref={carDropdownRef} className="absolute bottom-14 right-4 z-50 w-72 bg-bg-panel border border-border-default rounded-lg shadow-xl overflow-hidden">
+                <div className="p-2 border-b border-border-default">
+                  <input
+                    type="text"
+                    value={carSearch}
+                    onChange={(e) => setCarSearch(e.target.value)}
+                    placeholder="Search cars…"
+                    autoFocus
+                    className="w-full bg-bg-input border border-border-default rounded px-2 py-1.5 text-xs text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+                  />
+                </div>
+                <div className="max-h-52 overflow-y-auto">
+                  {cars
+                    .filter(c => !carSearch || c.display?.toLowerCase().includes(carSearch.toLowerCase()) || c.folder?.toLowerCase().includes(carSearch.toLowerCase()))
+                    .map(c => (
+                      <button
+                        key={c.folder}
+                        onClick={() => handleCarSelect(c.folder, c.display || c.folder)}
+                        className={`w-full text-left px-3 py-1.5 text-xs transition-colors cursor-pointer ${
+                          c.folder === selectedItem?.car_folder
+                            ? 'bg-accent/15 text-accent font-medium'
+                            : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                        }`}
+                      >
+                        {c.display || c.folder}
+                      </button>
+                    ))
+                  }
+                  {cars.filter(c => !carSearch || c.display?.toLowerCase().includes(carSearch.toLowerCase()) || c.folder?.toLowerCase().includes(carSearch.toLowerCase())).length === 0 && (
+                    <p className="px-3 py-2 text-[11px] text-text-muted">No cars match "{carSearch}"</p>
+                  )}
+                </div>
+              </div>
+            )}
+            {/* ── Spec associations panel ────────────────────────────── */}
+            {!isSpecItem && selectedItem.spec_maps?.length > 0 && (
+              <div className="flex-shrink-0 border-t border-border-default bg-bg-panel px-4 py-3">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-2">
+                  Linked Spec Maps ({selectedItem.spec_maps.length})
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {selectedItem.spec_maps.map((specPath, idx) => {
+                    const specItem = items.find((i) => i.livery_path === specPath);
+                    const label = specItem
+                      ? formatTimestamp((specItem.timestamp || 0) * 1000)
+                      : getFilename(specPath);
+                    return (
+                      <button
+                        key={specPath}
+                        title={specPath}
+                        onClick={() => specItem && setSelectedId(specItem.id)}
+                        className="flex items-center gap-1.5 px-2 py-1 rounded border border-success/40 bg-success/5 text-[11px] text-success hover:bg-success/10 transition-colors"
+                      >
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="opacity-70">
+                          <path d="M12 3L9 9H3l4.5 4.5-1.5 6L12 16.5 18 19.5l-1.5-6L21 9h-6z" />
+                        </svg>
+                        Spec {idx + 1}
+                        {label && <span className="text-success/60">— {label}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {/* ── Iterations panel ───────────────────────────────────── */}
+            {!isSpecItem && selectedItem.iterations?.length > 0 && (
+              <div className="flex-shrink-0 border-t border-border-default bg-bg-panel px-4 py-3">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-2">
+                  Iterations ({selectedItem.iterations.length})
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {selectedItem.iterations.map((iterPath, idx) => {
+                    const iterItem = items.find((i) => i.livery_path === iterPath);
+                    const label = iterItem
+                      ? formatTimestamp((iterItem.timestamp || 0) * 1000)
+                      : getFilename(iterPath);
+                    return (
+                      <button
+                        key={iterPath}
+                        title={iterPath}
+                        onClick={() => iterItem && setSelectedId(iterItem.id)}
+                        className="flex items-center gap-1.5 px-2 py-1 rounded border border-warning/40 bg-warning/5 text-[11px] text-warning hover:bg-warning/10 transition-colors"
+                      >
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="17 1 21 5 17 9" /><path d="M3 11V9a4 4 0 014-4h14" />
+                          <polyline points="7 23 3 19 7 15" /><path d="M21 13v2a4 4 0 01-4 4H3" />
+                        </svg>
+                        Iteration {idx + 1}
+                        {label && <span className="text-warning/60">— {label}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {/* ── Source livery link (for spec items) ───────────────── */}
+            {isSpecItem && selectedItem.source_livery_path && (
+              <div className="flex-shrink-0 border-t border-border-default bg-bg-panel px-4 py-3">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1.5">
+                  Source Livery
+                </div>
+                {(() => {
+                  const srcItem = items.find(
+                    (i) => i.livery_path === selectedItem.source_livery_path
+                  );
+                  return (
+                    <button
+                      title={selectedItem.source_livery_path}
+                      onClick={() => srcItem && setSelectedId(srcItem.id)}
+                      disabled={!srcItem}
+                      className="flex items-center gap-1.5 px-2 py-1 rounded border border-accent/40 bg-accent/5 text-[11px] text-accent hover:bg-accent/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M15 3h6v6M10 14L21 3M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" />
+                      </svg>
+                      {srcItem
+                        ? `${srcItem.display_name || srcItem.car_folder} — ${formatTimestamp((srcItem.timestamp || 0) * 1000)}`
+                        : getFilename(selectedItem.source_livery_path)}
+                    </button>
+                  );
+                })()}
+              </div>
+            )}
+            {/* ── Source livery link (for modify/iterate items) ──────── */}
+            {!isSpecItem && selectedItem.source_livery_path && (
+              <div className="flex-shrink-0 border-t border-border-default bg-bg-panel px-4 py-3">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1.5">
+                  Based On
+                </div>
+                {(() => {
+                  const srcItem = items.find(
+                    (i) => i.livery_path === selectedItem.source_livery_path
+                  );
+                  return (
+                    <button
+                      title={selectedItem.source_livery_path}
+                      onClick={() => srcItem && setSelectedId(srcItem.id)}
+                      disabled={!srcItem}
+                      className="flex items-center gap-1.5 px-2 py-1 rounded border border-warning/40 bg-warning/5 text-[11px] text-warning hover:bg-warning/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="17 1 21 5 17 9" /><path d="M3 11V9a4 4 0 014-4h14" />
+                        <polyline points="7 23 3 19 7 15" /><path d="M21 13v2a4 4 0 01-4 4H3" />
+                      </svg>
+                      {srcItem
+                        ? `${srcItem.display_name || srcItem.car_folder} — ${formatTimestamp((srcItem.timestamp || 0) * 1000)}`
+                        : getFilename(selectedItem.source_livery_path)}
+                    </button>
+                  );
+                })()}
+              </div>
+            )}
+          </>
         ) : (
           <div className="flex-1 flex items-center justify-center">
             <p className="text-sm text-text-muted">Select an item to view details</p>
@@ -141,6 +365,7 @@ export function HistoryTab({
 function HistoryCard({ item, selected, onClick }) {
   const modelLabel = item.model?.includes('pro') ? 'Pro' : item.model?.includes('flash') ? 'Flash' : null;
   const modeLabel = item.mode === 'iterate' ? 'Iterate' : item.mode === 'modify' ? 'Modify' : null;
+  const isSpecItem = item.entry_type === 'spec' || item.mode === 'spec';
   const resLabel = item.resolution_2k ? '2K' : '1K';
 
   return (
@@ -167,19 +392,34 @@ function HistoryCard({ item, selected, onClick }) {
         )}
         {/* Badges */}
         <div className="absolute top-1 right-1 flex gap-0.5">
-          {modelLabel && (
+          {isSpecItem && (
+            <span className="px-1 py-0.5 text-[8px] font-bold uppercase rounded text-white bg-success/70">
+              Spec
+            </span>
+          )}
+          {!isSpecItem && modelLabel && (
             <span className={`px-1 py-0.5 text-[8px] font-bold uppercase rounded text-white ${modelLabel === 'Pro' ? 'bg-accent-wine/80' : 'bg-accent/60'}`}>
               {modelLabel}
             </span>
           )}
-          {resLabel && (
+          {!isSpecItem && resLabel && (
             <span className={`px-1 py-0.5 text-[8px] font-bold uppercase rounded text-white ${resLabel === '2K' ? 'bg-success/70' : 'bg-text-muted/50'}`}>
               {resLabel}
             </span>
           )}
-          {modeLabel && (
+          {!isSpecItem && modeLabel && (
             <span className="px-1 py-0.5 text-[8px] font-bold uppercase rounded text-white bg-warning/70">
               {modeLabel}
+            </span>
+          )}
+          {item.spec_maps?.length > 0 && (
+            <span className="px-1 py-0.5 text-[8px] font-bold uppercase rounded text-white bg-success/50" title={`${item.spec_maps.length} spec map(s) linked`}>
+              ◆{item.spec_maps.length}
+            </span>
+          )}
+          {item.iterations?.length > 0 && (
+            <span className="px-1 py-0.5 text-[8px] font-bold uppercase rounded text-white bg-warning/50" title={`${item.iterations.length} iteration(s)`}>
+              ↻{item.iterations.length}
             </span>
           )}
           {item.upscaled && (

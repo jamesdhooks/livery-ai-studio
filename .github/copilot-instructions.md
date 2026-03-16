@@ -32,12 +32,18 @@ livery-ai-studio/
 ├── frontend/               # React source
 │   ├── src/
 │   │   ├── components/     # React components
-│   │   ├── hooks/          # Custom React hooks
+│   │   ├── context/        # React context providers (AppProvider + per-feature)
+│   │   ├── hooks/          # Custom React hooks (wrapped by contexts)
 │   │   ├── services/       # API service layer
 │   │   ├── utils/          # Utility functions
 │   │   └── test/           # Tests
 │   ├── vite.config.js      # Vite + Vitest config
 │   └── tailwind.config.js  # Tailwind custom theme
+├── server/                 # Flask route modules + backend logic
+│   ├── routes/             # Blueprint route handlers (api_generate, api_history, etc.)
+│   ├── generate.py         # Gemini AI core generation logic
+│   ├── deploy.py           # iRacing paint folder deployment
+│   └── spending.py         # Persistent spending log (data/spending_log.json)
 ├── car_library/            # 180+ pre-extracted car templates
 ├── legacy/                 # Original vanilla JS/HTML/CSS (reference only)
 ├── config/                 # Config documentation
@@ -46,9 +52,9 @@ livery-ai-studio/
 └── livery_map.json         # Car template mapping
 ```
 
-## Architecture: Service → Hook → Component
+## Architecture: Service → Hook → Context → Component
 
-All backend communication follows this layered pattern:
+All backend communication and shared state follows this four-layer pattern:
 
 ### 1. Services (`frontend/src/services/`)
 Services extend `BaseService` and encapsulate all API calls.
@@ -73,10 +79,10 @@ export default new MyService(); // singleton
 - Services handle raw API communication only — no React state
 - Services throw errors on non-OK HTTP responses
 
-**Available services:** `ConfigService`, `SessionService`, `CarsService`, `GenerateService`, `HistoryService`, `UpscaleService`, `LogService`
+**Available services:** `ConfigService`, `SessionService`, `CarsService`, `GenerateService`, `HistoryService`, `UpscaleService`, `SpendingService`, `LogService`
 
 ### 2. Hooks (`frontend/src/hooks/`)
-Custom hooks act as the layer between services and components. They manage state and expose simple interfaces.
+Custom hooks act as the layer between services and contexts. They manage state and expose simple interfaces.
 
 ```javascript
 export function useMyFeature() {
@@ -100,27 +106,74 @@ export function useMyFeature() {
 **Rules:**
 - Hooks use services for data fetching — never call `fetch()` directly
 - Hooks manage loading/error state
-- Hooks expose simple action callbacks to components
+- Hooks expose simple action callbacks
 - Use `useCallback` for stable function references
+- Hooks are **wrapped by contexts** — components don't call hooks directly for shared state
 
-**Available hooks:** `useConfig`, `useSession`, `useCars`, `useGenerate`, `useHistory`, `useUpscale`
+**Available hooks:** `useConfig`, `useSession`, `useCars`, `useGenerate`, `useHistory`, `useUpscale`, `useSpending`, `useSpecular`, `useCarOverrides`, `useToast`, `useTheme`
 
-### 3. Components (`frontend/src/components/`)
-Components consume hooks and render UI. They contain no direct API calls.
+### 3. Contexts (`frontend/src/context/`)
+Each context wraps a hook and makes its state available app-wide without prop drilling. All contexts are composed inside `AppProvider`.
+
+```javascript
+// Pattern: wrap a hook, expose via a named useXxxContext() hook
+const MyContext = createContext(null);
+
+export function MyProvider({ children }) {
+  const hookValues = useMyFeature();
+  return <MyContext.Provider value={hookValues}>{children}</MyContext.Provider>;
+}
+
+export function useMyContext() {
+  const ctx = useContext(MyContext);
+  if (!ctx) throw new Error('useMyContext must be used within MyProvider');
+  return ctx;
+}
+```
+
+**AppProvider** (`frontend/src/context/AppProvider.jsx`) composes all providers in dependency order:
+`Config → Session → Cars → GenerationPrefs → History → Spending → Generate → Upscale → Specular`
+
+**Available contexts and their exports:**
+| Context | Hook | Key exports |
+|---------|------|-------------|
+| `ConfigContext` | `useConfigContext()` | `config, loading, saveConfig, reloadConfig` |
+| `SessionContext` | `useSessionContext()` | `session, saveSession, debouncedSave, debouncedSaveModeState` |
+| `CarsContext` | `useCarsContext()` | `cars, selectedCar, setSelectedCar, onCarChange, carWireUrl, carDiffuseUrl, getWireframeUrl, wireOverride, baseOverride, setWireOverride, setBaseOverride, clearWireOverride, clearBaseOverride` |
+| `GenerationPrefsContext` | `useGenerationPrefs()` | `genModel, genIs2K, genAutoUpscale, setGenModel, setGenIs2K, setGenAutoUpscale` |
+| `HistoryContext` | `useHistoryContext()` | `items, loading, loadHistory, deleteItem, updateItemCar` |
+| `SpendingContext` | `useSpendingContext()` | `entries, totalSpend, lastTransaction, handleTransaction` |
+| `GenerateContext` | `useGenerateContext()` | all `useGenerate` returns (generate, abort, upload, browse, delete, deploy) |
+| `UpscaleContext` | `useUpscaleContext()` | `upscaling, deploying, result, status, upscale, deploy, clearStatus` |
+| `SpecularContext` | `useSpecularContext()` | `generating, deploying, elapsedSeconds, result, status, generate, abort, deploySpec, clearStatus` |
+| `ToastContext` | `useToastContext()` | `toast(message, type)` |
+
+**Rules:**
+- Components import contexts, **not** hooks directly (for shared state)
+- Never prop-drill data that's already in a context — import the context instead
+- `useTheme` is the only hook used directly in `App.jsx` (UI-only, not shared)
+- `ToastContext` is provided by `ToastProvider` in `main.jsx`, outside `AppProvider`
+
+### 4. Components (`frontend/src/components/`)
+Components consume contexts and render UI. They contain no direct API calls and minimal prop interfaces.
 
 ```javascript
 function MyComponent() {
-  const { data, loading, load } = useMyFeature();
+  const { data, loading } = useMyContext();
   // ...
 }
 ```
 
 **Component Organization:**
-- `common/` — Reusable UI atoms: `Button`, `Modal`, `StatusBar`, `Toggle`, `FileUploader`
+- `common/` — Reusable UI atoms: `Button`, `Modal`, `StatusBar`, `Toggle`, `FileUploader`, `ModelSelector`, `GenerationProgress`, `Toast`
 - `layout/` — App shell: `TopBar`, `SubBar`
-- `tabs/` — Main content: `GenerateTab`, `HistoryTab`, `UpscaleTab`, `SettingsTab`, `SponsorsTab`, `SpecularTab`
+- `tabs/` — Main content: `GenerateTab`, `HistoryTab`, `UpscaleTab`, `SettingsTab`, `SponsorsTab`, `SpecularTab`, `CarsTab`
 - `modals/` — Dialogs: `SamplePromptsModal`, `SpendingModal`, `HistoryDetailModal`, `CarLibraryModal`, `PromptHistoryModal`, `BrowseUploadsModal`
 - `CarPicker.jsx` — Complex car selection dropdown
+
+**Prop guidelines for tabs:**
+- Tabs should only receive props for things that are truly local to `App.jsx` (e.g. injection state, modal callbacks, navigation handlers, `capabilities`)
+- Everything else comes from contexts — do not add new props when a context already provides the data
 
 ## Styling Guidelines
 
@@ -175,6 +228,8 @@ Use the `Button` component from `common/Button.jsx`:
 | GET | `/api/uploads/preview?path=` | Preview file |
 | GET | `/api/library/image/<slug>/wire.jpg` | Car wireframe |
 | GET | `/api/library/image/<slug>/diffuse.jpg` | Car diffuse |
+| GET | `/api/spending` | All spending log entries |
+| POST | `/api/spending` | Record a transaction |
 
 ## Testing
 
@@ -222,11 +277,12 @@ npm run build
 ```
 
 ### Adding a New Feature
-1. Add a new API endpoint in `app.py`
+1. Add a new API endpoint in `app.py` (or a route module under `server/routes/`)
 2. Create/update a service in `frontend/src/services/`
 3. Create/update a hook in `frontend/src/hooks/`
-4. Create/update a component in `frontend/src/components/`
-5. Write tests in `frontend/src/test/`
+4. Create/update a context in `frontend/src/context/` and register it in `AppProvider.jsx`
+5. Consume the context in components via `useXxxContext()` — avoid passing new props when context already provides the data
+6. Write tests in `frontend/src/test/`
 
 ## Python Backend Guidelines
 - All Flask routes use `jsonify()` for JSON responses

@@ -41,11 +41,13 @@ export class BaseService {
    */
   async _request(method, path, body = null, options = {}) {
     const url = this._url(path);
+    const { signal, ...restOptions } = options;
     const fetchOptions = {
       method,
       headers: {},
-      ...options,
+      ...restOptions,
     };
+    if (signal) fetchOptions.signal = signal;
 
     if (body !== null && !(body instanceof FormData)) {
       fetchOptions.headers['Content-Type'] = 'application/json';

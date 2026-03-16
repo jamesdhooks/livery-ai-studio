@@ -4,6 +4,8 @@ server/routes/api_generate.py
 /api/generate         — full Gemini livery generation
 /api/enhance-prompt   — improve a user prompt via Gemini text
 /api/sponsors         — apply sponsor logos to an existing livery
+/api/spending         — GET spending log entries
+/api/spending/record  — POST a failed/cancelled transaction
 """
 
 from __future__ import annotations
@@ -23,6 +25,7 @@ from flask import Blueprint, jsonify, request
 from server.config import get_data_dir, get_liveries_dir, get_thumbnails_dir, get_user_cars_dir, load_config, save_config
 from server.cars import lookup_car_display
 from server.extract import LIBRARY_DIR
+import server.spending as spending_log
 
 bp = Blueprint("api_generate", __name__)
 
@@ -222,6 +225,50 @@ def api_generate():
             json.dumps(sidecar, indent=2), encoding="utf-8"
         )
 
+        # ── Record to persistent spending log ─────────────────────────────────
+        spending_log.record(
+            cost=estimated_cost,
+            model=model_name,
+            resolution=resolution_str,
+            status="success",
+            car=car_display or car_name,
+            livery_id=livery_path.stem,
+            estimated=False,
+        )
+
+        # ── Link iteration back to its source livery ──────────────────────────
+        # When mode is modify/iterate and base_texture_path points to a livery
+        # in history, record source_livery_path on this sidecar and append this
+        # livery to the source's iterations[] list (mirrors spec_maps[] logic).
+        if mode in ("modify", "iterate") and base_texture_path:
+            source_path = Path(base_texture_path).resolve()
+            matched = False
+            for json_file in get_liveries_dir().glob("*.json"):
+                if json_file.resolve() == livery_path.with_suffix(".json").resolve():
+                    continue  # skip our own sidecar
+                try:
+                    entry = json.loads(json_file.read_text(encoding="utf-8"))
+                    entry_livery = entry.get("livery_path") or str(json_file.with_suffix(".tga"))
+                    if Path(entry_livery).resolve() == source_path:
+                        # Patch the source's sidecar with an iterations[] entry
+                        iterations: list = entry.get("iterations", [])
+                        if str(livery_path) not in iterations:
+                            iterations.append(str(livery_path))
+                        entry["iterations"] = iterations
+                        json_file.write_text(json.dumps(entry, indent=2), encoding="utf-8")
+                        # Patch our own sidecar with source_livery_path
+                        sidecar["source_livery_path"] = str(source_path)
+                        livery_path.with_suffix(".json").write_text(
+                            json.dumps(sidecar, indent=2), encoding="utf-8"
+                        )
+                        print(f"[GENERATE] Linked iteration to source livery: {json_file.name}")
+                        matched = True
+                        break
+                except Exception as link_err:
+                    print(f"[GENERATE] Warning: could not patch sidecar {json_file.name}: {link_err}")
+            if not matched:
+                print(f"[GENERATE] No matching source livery found for base_texture_path={base_texture_path!r}")
+
         # ── Deploy ────────────────────────────────────────────────────────────
         if auto_deploy and car_name and customer_id:
             dest = deploy_livery(tga_path=result_path, car_name=car_name,
@@ -266,6 +313,28 @@ def api_generate():
         return jsonify({"error": str(e)}), 500
 
 
+# ── Spending log endpoints ─────────────────────────────────────────────────────
+
+@bp.route("/api/spending", methods=["GET"])
+def api_spending():
+    """Return all spending log entries (newest first)."""
+    return jsonify(spending_log.get_all())
+
+
+@bp.route("/api/spending/record", methods=["POST"])
+def api_spending_record():
+    """Record a failed or cancelled transaction from the frontend."""
+    d = request.json or {}
+    entry = spending_log.record(
+        cost=float(d.get("cost", 0)),
+        model=d.get("model", "Flash"),
+        resolution=d.get("resolution", "1K"),
+        status=d.get("status", "cancelled"),
+        car=d.get("car", ""),
+        livery_id="",
+        estimated=True,
+    )
+    return jsonify(entry)
 # ── Enhance prompt ────────────────────────────────────────────────────────────
 
 DEFAULT_ENHANCE_GUIDANCE = """- Add specific colour references (e.g. "deep metallic navy #1a2b4f" instead of just "blue")
@@ -619,6 +688,200 @@ TECHNICAL REQUIREMENTS:
         resp["preview_b64"] = base64.b64encode(buf.getvalue()).decode()
 
         return jsonify(resp)
+
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
+# ── Generate specular map ─────────────────────────────────────────────────────
+
+@bp.route("/api/generate-specular", methods=["POST"])
+def api_generate_specular():
+    """Generate a specular/reflectivity map via Gemini and optionally deploy to iRacing."""
+    from server.generate import generate_spec_map, MODEL_PRO, MODEL_FAST
+    from server.deploy import deploy_spec_livery, resolve_car_folder
+    from PIL import Image
+
+    data   = request.json or {}
+    config = load_config()
+
+    prompt           = data.get("prompt", "").strip()
+    wireframe_path   = _resolve_image_path(
+                         data.get("wireframe_path", config.get("default_wireframe", "")).strip())
+    livery_path_in   = _resolve_image_path(
+                         data.get("livery_path", "").strip())
+    use_fast         = data.get("use_fast_model", config.get("use_fast_model", False))
+    resolution_2k    = data.get("resolution_2k", True)
+    car_name         = (data.get("car_folder") or data.get("car_name") or config.get("default_car", "")).strip()
+    customer_id      = data.get("customer_id", config.get("customer_id", "")).strip()
+    auto_deploy      = data.get("auto_deploy", False)
+
+    api_key = config.get("gemini_api_key", "") or os.environ.get("GEMINI_API_KEY", "")
+
+    print(f"[SPECULAR] prompt={prompt[:50]!r}")
+    print(f"[SPECULAR] wireframe={wireframe_path!r}, livery={livery_path_in!r}")
+
+    # Validation
+    if not prompt:
+        return jsonify({"error": "Please enter a specular map description."}), 400
+    if not api_key:
+        return jsonify({"error": "No Gemini API key set. Go to Settings to add one."}), 400
+    if auto_deploy and not car_name:
+        return jsonify({"error": "Please select a car for deployment."}), 400
+    if auto_deploy and not customer_id:
+        auto_deploy = False
+
+    # wireframe and livery are optional but warn if wireframe is missing
+    if wireframe_path and not Path(wireframe_path).exists():
+        return jsonify({"error": f"Wireframe not found: {wireframe_path}"}), 400
+    if livery_path_in and not Path(livery_path_in).exists():
+        return jsonify({"error": f"Livery file not found: {livery_path_in}"}), 400
+
+    try:
+        model        = MODEL_FAST if use_fast else MODEL_PRO
+        car_display  = lookup_car_display(car_name) if car_name else ""
+        liveries_dir = get_liveries_dir()
+        liveries_dir.mkdir(parents=True, exist_ok=True)
+
+        with tempfile.NamedTemporaryFile(suffix=".tga", delete=False,
+                                         dir=tempfile.gettempdir()) as tmp:
+            tmp_path = tmp.name
+
+        result_path, conversation_log = generate_spec_map(
+            prompt=prompt,
+            wireframe_path=wireframe_path or "",
+            output_path=tmp_path,
+            livery_path=livery_path_in or None,
+            model=model,
+            api_key=api_key,
+            resolution_2k=resolution_2k if use_fast else True,
+        )
+
+        response: dict = {
+            "status":     "ok",
+            "model_used": "Gemini Flash" if use_fast else "Gemini Pro",
+        }
+
+        # ── Archive ───────────────────────────────────────────────────────────
+        ts          = datetime.datetime.now()
+        date_prefix = ts.strftime("%Y%m%d_%H%M%S")
+        safe_name   = re.sub(r"[^\w\-]", "_", prompt[:50])
+        spec_name   = f"{date_prefix}_{safe_name}_spec.tga"
+        spec_path   = liveries_dir / spec_name
+        shutil.copy2(result_path, spec_path)
+        response["archive_path"] = str(spec_path)
+        response["livery_path"]  = str(spec_path)
+
+        # Full-quality JPG
+        try:
+            Image.open(result_path).convert("RGB").save(
+                str(spec_path.with_suffix(".jpg")), format="JPEG", quality=92
+            )
+        except Exception as e:
+            print(f"[SPECULAR] Warning: full JPG failed: {e}")
+
+        # Thumbnail preview
+        try:
+            thumb_dir = get_thumbnails_dir()
+            preview_jpg_path = thumb_dir / (spec_path.stem + "_preview.jpg")
+            thumb = Image.open(result_path).convert("RGB")
+            thumb.thumbnail((512, 512))
+            thumb.save(str(preview_jpg_path), format="JPEG", quality=85)
+        except Exception as e:
+            print(f"[SPECULAR] Warning: preview JPG failed: {e}")
+
+        # ── Sidecar JSON ──────────────────────────────────────────────────────
+        cfg_prices     = load_config()
+        model_name     = "Flash" if use_fast else "Pro"
+        resolution_str = "2K" if (use_fast and resolution_2k) or not use_fast else "1K"
+        pricing_map    = {
+            ("Flash", "1K"): cfg_prices.get("price_flash_1k", 0.067),
+            ("Flash", "2K"): cfg_prices.get("price_flash_2k", 0.101),
+            ("Pro",   "2K"): cfg_prices.get("price_pro",      0.134),
+            ("Pro",   "1K"): cfg_prices.get("price_pro",      0.134),
+        }
+        estimated_cost = pricing_map.get((model_name, resolution_str),
+                                          cfg_prices.get("price_pro", 0.134))
+
+        sidecar: dict = {
+            "entry_type":         "spec",
+            "prompt":             prompt,
+            "mode":               "spec",
+            "model":              model_name,
+            "resolution":         resolution_str,
+            "estimated_cost":     estimated_cost,
+            "wireframe_path":     wireframe_path or "",
+            "source_livery_path": livery_path_in or "",
+            "car":                car_display or car_name,
+            "car_folder":         car_name,
+            "customer_id":        customer_id,
+            "auto_deploy":        auto_deploy,
+            "generated_at":       ts.isoformat(timespec="seconds"),
+            "api_requests":       1,
+            "conversation_log":   conversation_log,
+        }
+
+        spec_path.with_suffix(".json").write_text(
+            json.dumps(sidecar, indent=2), encoding="utf-8"
+        )
+
+        # ── Link spec map back to its source livery ───────────────────────────
+        # Find any history sidecar whose livery path matches our source livery,
+        # then append this spec path to its spec_maps array.
+        if livery_path_in:
+            for json_file in liveries_dir.glob("*.json"):
+                if json_file.stem.endswith("_spec"):
+                    continue  # don't patch other spec sidecars
+                try:
+                    entry = json.loads(json_file.read_text(encoding="utf-8"))
+                    entry_livery = entry.get("livery_path") or str(json_file.with_suffix(".tga"))
+                    if Path(entry_livery).resolve() == Path(livery_path_in).resolve():
+                        spec_maps: list = entry.get("spec_maps", [])
+                        if str(spec_path) not in spec_maps:
+                            spec_maps.append(str(spec_path))
+                        entry["spec_maps"] = spec_maps
+                        json_file.write_text(json.dumps(entry, indent=2), encoding="utf-8")
+                        print(f"[SPECULAR] Linked spec to livery sidecar: {json_file.name}")
+                        break
+                except Exception as link_err:
+                    print(f"[SPECULAR] Warning: could not patch sidecar {json_file.name}: {link_err}")
+
+        # ── Deploy ────────────────────────────────────────────────────────────
+        if auto_deploy and car_name and customer_id:
+            dest = deploy_spec_livery(tga_path=str(spec_path), car_name=car_name,
+                                       customer_id=customer_id)
+            response["deployed_to"] = str(dest)
+            response["car_folder"]  = resolve_car_folder(car_name)
+
+        if car_name:
+            _record_recent_car(car_name, config)
+
+        # ── Preview PNG ───────────────────────────────────────────────────────
+        img     = Image.open(result_path).convert("RGBA")
+        preview = img.copy()
+        preview.thumbnail((512, 512))
+        buf = io.BytesIO()
+        preview.save(buf, format="PNG")
+        response["preview_b64"] = base64.b64encode(buf.getvalue()).decode()
+
+        # Enrich response
+        response["prompt"]       = prompt
+        response["cost"]         = estimated_cost
+        response["model_name"]   = model_name
+        response["resolution"]   = resolution_str
+        response["entry_type"]   = "spec"
+        response["conversation_log"] = conversation_log
+
+        # Cleanup temp file
+        try:
+            Path(result_path).unlink(missing_ok=True)
+            if result_path != tmp_path:
+                Path(tmp_path).unlink(missing_ok=True)
+        except Exception:
+            pass
+
+        return jsonify(response)
 
     except Exception as e:
         import traceback; traceback.print_exc()

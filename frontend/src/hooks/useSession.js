@@ -30,7 +30,10 @@ export function useSession() {
   }, []);
 
   const saveSession = useCallback((data) => {
-    sessionService.saveSession(data).catch(() => {});
+    console.log('[FRONTEND_SAVE] saveSession called with:', Object.keys(data));
+    sessionService.saveSession(data)
+      .then(() => console.log('[FRONTEND_SAVE] Success!'))
+      .catch(err => console.error('[FRONTEND_SAVE] Error:', err));
     setSession(prev => ({ ...prev, ...data }));
   }, []);
 
@@ -43,9 +46,21 @@ export function useSession() {
     }, delay);
   }, [saveSession]);
 
+  // Debounced save for modeState (for text input changes)
+  const debouncedSaveModeState = useCallback((modeState, delay = 500) => {
+    console.log('[FRONTEND_DEBOUNCE] Timer queued, delay:', delay, 'prompt:', modeState?.new?.prompt?.substring(0, 40));
+    if (saveTimerRef.current.modeState) {
+      clearTimeout(saveTimerRef.current.modeState);
+    }
+    saveTimerRef.current.modeState = setTimeout(() => {
+      console.log('[FRONTEND_DEBOUNCE] Timer fired! Calling saveSession with modeState');
+      saveSession({ modeState });
+    }, delay);
+  }, [saveSession]);
+
   useEffect(() => {
     loadSession();
   }, [loadSession]);
 
-  return { session, loadSession, saveSession, debouncedSave };
+  return { session, loadSession, saveSession, debouncedSave, debouncedSaveModeState };
 }

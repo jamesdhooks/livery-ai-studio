@@ -60,6 +60,21 @@ export function useHistory(autoLoad = false) {
     }
   }, []);
 
+  const updateItemCar = useCallback(async (id, carFolder, carDisplay) => {
+    const item = items.find(i => i.id === id);
+    if (!item?.livery_path) return false;
+    try {
+      await historyService.updateItem(item.livery_path, { car_folder: carFolder, car: carDisplay || carFolder });
+      setItems(prev => prev.map(i =>
+        i.id === id ? { ...i, car_folder: carFolder, car: carDisplay || carFolder, display_name: carDisplay || carFolder } : i
+      ));
+      return true;
+    } catch (e) {
+      setError(e.message);
+      return false;
+    }
+  }, [items]);
+
   const getTotalSpend = useCallback((filterId = 'overall') => {
     const now = Date.now();
     const filtered = filterId === 'overall' ? items : items.filter((item) => {
@@ -75,5 +90,5 @@ export function useHistory(autoLoad = false) {
     if (autoLoad) loadHistory();
   }, [autoLoad, loadHistory]);
 
-  return { items, loading, error, loadHistory, deleteItem, getTotalSpend };
+  return { items, loading, error, loadHistory, deleteItem, updateItemCar, getTotalSpend };
 }

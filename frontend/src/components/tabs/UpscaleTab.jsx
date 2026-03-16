@@ -3,18 +3,18 @@ import { Button } from '../common/Button';
 import { ImageActionTray } from '../common/ImageActionTray';
 import { StatusBar } from '../common/StatusBar';
 import upscaleService from '../../services/UpscaleService';
+import { useUpscaleContext } from '../../context/UpscaleContext';
+import { useConfigContext } from '../../context/ConfigContext';
 
 export function UpscaleTab({
-  upscaling,
-  upscaleResult,
-  upscaleStatus,
-  onUpscale,
-  onClearStatus,
-  onDeploy,
-  deploying,
-  config,
   capabilities,
 }) {
+  // ── Contexts ─────────────────────────────────────────────────────────────
+  const {
+    upscaling, result: upscaleResult, status: upscaleStatus,
+    upscale: onUpscale, deploy: onDeploy, deploying, clearStatus: onClearStatus,
+  } = useUpscaleContext();
+  const { config } = useConfigContext();
   const [sourcePath, setSourcePath] = useState('');
   const [sourcePreview, setSourcePreview] = useState('');
   const [isDragging, setIsDragging] = useState(false);

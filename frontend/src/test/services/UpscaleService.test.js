@@ -28,8 +28,8 @@ describe('UpscaleService', () => {
 
     const result = await upscaleService.deploy('/data/liveries/123.tga', 'porsche992rgt3', '123456');
     expect(upscaleService.post).toHaveBeenCalledWith('/deploy', {
-      livery_path: '/data/liveries/123.tga',
-      car_name: 'porsche992rgt3',
+      path: '/data/liveries/123.tga',
+      car_folder: 'porsche992rgt3',
       customer_id: '123456',
     });
     expect(result).toEqual({ ok: true });
@@ -39,8 +39,8 @@ describe('UpscaleService', () => {
     upscaleService.post = vi.fn().mockResolvedValueOnce({ ok: true });
     await upscaleService.deploy('/path/livery.tga', 'bmwm4gt3', '999');
     const payload = upscaleService.post.mock.calls[0][1];
-    expect(payload).toHaveProperty('livery_path');
-    expect(payload).toHaveProperty('car_name');
+    expect(payload).toHaveProperty('path');
+    expect(payload).toHaveProperty('car_folder');
     expect(payload).toHaveProperty('customer_id');
   });
 });

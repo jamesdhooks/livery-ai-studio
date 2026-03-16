@@ -17,8 +17,8 @@ class GenerateService extends BaseService {
    * @param {Object} params - Generation parameters (model, car_folder, prompt, wireframe, etc.).
    * @returns {Promise<{livery_path: string, preview_url: string, cost: number}>}
    */
-  async generate(params) {
-    return this.post('/generate', params);
+  async generate(params, signal) {
+    return this.post('/generate', params, signal ? { signal } : {});
   }
 
   /**
@@ -63,6 +63,26 @@ class GenerateService extends BaseService {
    */
   async getUploads(category) {
     return this.get(`/uploads/${category}`);
+  }
+
+  /**
+   * Trigger a specular map generation.
+   * @param {Object} params - Parameters (wireframe_path, livery_path, prompt, car_folder, etc.).
+   * @returns {Promise<{livery_path: string, preview_b64: string, cost: number}>}
+   */
+  async generateSpecular(params, signal) {
+    return this.post('/generate-specular', params, signal ? { signal } : {});
+  }
+
+  /**
+   * Deploy a specular map to iRacing as car_spec_<id>.tga.
+   * @param {string} tgaPath - Absolute path to the spec map TGA.
+   * @param {string} carFolder - iRacing car folder name.
+   * @param {string} customerId - iRacing customer ID.
+   * @returns {Promise<{status: string, deployed_to: string}>}
+   */
+  async deploySpec(tgaPath, carFolder, customerId) {
+    return this.post('/deploy-spec', { path: tgaPath, car_folder: carFolder, customer_id: customerId });
   }
 
   /**

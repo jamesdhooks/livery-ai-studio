@@ -85,6 +85,7 @@ export function CarPicker({ cars = [], selectedFolder = '', onChange }) {
   const toggleStar = (e, folder) => {
     e.stopPropagation();
     const newStarred = new Set(starred);
+    const isAdding = !newStarred.has(folder);
     if (newStarred.has(folder)) {
       newStarred.delete(folder);
     } else {
@@ -92,6 +93,8 @@ export function CarPicker({ cars = [], selectedFolder = '', onChange }) {
     }
     setStarred(newStarred);
     saveStarredCars(newStarred);
+    // Auto-select the car when starring it
+    if (isAdding) handleSelect(folder);
   };
 
   const CarItem = ({ car }) => {

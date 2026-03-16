@@ -19,12 +19,21 @@ import upscaleService from '../services/UpscaleService';
  *   clearStatus: () => void,
  * }}
  */
-export function useUpscale() {
+export function useUpscale({ onNotify } = {}) {
   const [upscaling, setUpscaling] = useState(false);
   const [deploying, setDeploying] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [status, setStatus] = useState(null);
+
+  // Route success/error notifications to onNotify (toast) if provided, else inline status
+  const notify = useCallback((type, message) => {
+    if (onNotify) {
+      onNotify(message, type);
+    } else {
+      setStatus({ type, message });
+    }
+  }, [onNotify]);
 
   const upscale = useCallback(async (sourcePath) => {
     if (upscaling) return null;
@@ -33,19 +42,22 @@ export function useUpscale() {
     setError(null);
     setStatus({ type: 'info', message: 'Upscaling livery (this may take 30-60s)…' });
     
+    // Show initial "upscaling" toast
+    notify('info', 'Upscaling livery (this may take 30-60 seconds)…');
+
     try {
       const data = await upscaleService.upscale(sourcePath);
       setResult(data);
-      setStatus({ type: 'success', message: 'Upscale complete!' });
+      notify('success', 'Upscale complete!');
       return data;
     } catch (e) {
       setError(e.message);
-      setStatus({ type: 'error', message: `Upscale failed: ${e.message}` });
+      notify('error', `Upscale failed: ${e.message}`);
       return null;
     } finally {
       setUpscaling(false);
     }
-  }, [upscaling]);
+  }, [upscaling, notify]);
 
   const deploy = useCallback(async (liveryPath, carName, customerId) => {
     if (deploying) return false;
@@ -55,16 +67,18 @@ export function useUpscale() {
     
     try {
       await upscaleService.deploy(liveryPath, carName, customerId);
-      setStatus({ type: 'success', message: 'Deployed to iRacing!' });
+      notify('success', 'Deployed to iRacing!');
+      if (onNotify) setStatus(null);
       return true;
     } catch (e) {
       setError(e.message);
-      setStatus({ type: 'error', message: `Deploy failed: ${e.message}` });
+      notify('error', `Deploy failed: ${e.message}`);
+      if (onNotify) setStatus(null);
       return false;
     } finally {
       setDeploying(false);
     }
-  }, [deploying]);
+  }, [deploying, notify]);
 
   const clearStatus = useCallback(() => setStatus(null), []);
 

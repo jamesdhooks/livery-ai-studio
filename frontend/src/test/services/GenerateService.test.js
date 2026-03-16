@@ -18,7 +18,7 @@ describe('GenerateService', () => {
     generateService.post = vi.fn().mockResolvedValueOnce(mockResult);
 
     const result = await generateService.generate(params);
-    expect(generateService.post).toHaveBeenCalledWith('/generate', params);
+    expect(generateService.post).toHaveBeenCalledWith('/generate', params, {});
     expect(result).toEqual(mockResult);
   });
 

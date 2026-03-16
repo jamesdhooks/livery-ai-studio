@@ -7,44 +7,85 @@ const FILTERS = [
   { id: 'overall', label: 'Overall' },
 ];
 
-function filterItems(items, filterId) {
-  if (filterId === 'overall') return items;
+const STATUS_LABEL = { success: null, cancelled: 'Cancelled', failed: 'Failed', estimated: 'Pending' };
+const STATUS_COLOR = {
+  success:   'text-warning',
+  cancelled: 'text-error/70',
+  failed:    'text-error/70',
+  estimated: 'text-text-muted',
+};
+
+/**
+ * Normalize a spending-log entry into a consistent shape for display.
+ * Both `spendingEntries` (from /api/spending) and legacy `historyItems`
+ * (from /api/history) are accepted; spending entries take precedence when
+ * the spending log is available.
+ */
+function normalizeEntry(e) {
+  // Spending log shape: { id, ts, iso, model, resolution, cost, status, car, livery_id, estimated }
+  if (e.iso || e.ts) {
+    return {
+      id:       e.id,
+      ts:       e.ts,
+      cost:     parseFloat(e.cost) || 0,
+      model:    e.model || '',
+      resolution: e.resolution || '1K',
+      status:   e.status || 'success',
+      car:      e.car || '',
+      label:    e.car || '',
+      estimated: !!e.estimated,
+    };
+  }
+  // Legacy history shape: { id, timestamp, cost, model, resolution_2k, car_folder, display_name }
+  return {
+    id:       e.id,
+    ts:       e.timestamp || 0,
+    cost:     parseFloat(e.cost) || 0,
+    model:    e.model || '',
+    resolution: e.resolution_2k || (e.resolution || '').toLowerCase() === '2k' ? '2K' : '1K',
+    status:   'success',
+    car:      e.display_name || e.car_folder || '',
+    label:    e.display_name || e.car_folder || '',
+    estimated: false,
+  };
+}
+
+function filterEntries(entries, filterId) {
+  if (filterId === 'overall') return entries;
   const now = Date.now();
   const cutoff = filterId === 'today'
     ? now - 24 * 60 * 60 * 1000
     : now - 7  * 24 * 60 * 60 * 1000;
-  return items.filter((item) => (item.timestamp || 0) * 1000 >= cutoff);
+  return entries.filter((e) => e.ts * 1000 >= cutoff);
 }
 
-function calcBreakdown(items) {
+function calcBreakdown(entries) {
   const totals = { flash_1k: 0, flash_2k: 0, pro: 0, total: 0 };
   let count = 0;
-  items.forEach((item) => {
-    const cost = parseFloat(item.cost) || 0;
-    totals.total += cost;
+  entries.forEach((e) => {
+    totals.total += e.cost;
     count++;
-    const model = (item.model || '').toLowerCase();
-    if (model.includes('pro')) totals.pro += cost;
-    else if (item.resolution_2k || (item.resolution || '').toLowerCase() === '2k') totals.flash_2k += cost;
-    else totals.flash_1k += cost;
+    const model = e.model.toLowerCase();
+    if (model.includes('pro')) totals.pro += e.cost;
+    else if (e.resolution === '2K') totals.flash_2k += e.cost;
+    else totals.flash_1k += e.cost;
   });
   return { ...totals, count };
 }
 
 // ── Mini spend-over-time bar chart ────────────────────────────────────────────
-function SpendChart({ items, filterId }) {
+function SpendChart({ entries, filterId }) {
   const bars = useMemo(() => {
-    if (!items.length) return [];
+    if (!entries.length) return [];
     const now = Date.now();
 
     if (filterId === 'today') {
       const buckets = Array.from({ length: 24 }, (_, i) => ({ label: `${i}`, value: 0 }));
-      items.forEach((item) => {
-        const age = now - (item.timestamp || 0) * 1000;
+      entries.forEach((e) => {
+        const age = now - e.ts * 1000;
         const hour = 23 - Math.min(23, Math.floor(age / (60 * 60 * 1000)));
-        buckets[hour].value += parseFloat(item.cost) || 0;
+        buckets[hour].value += e.cost;
       });
-      // Only label every 6 hours
       return buckets.map((b, i) => ({ ...b, label: i % 6 === 0 ? `${i}h` : '' }));
     }
 
@@ -54,10 +95,10 @@ function SpendChart({ items, filterId }) {
         const d = new Date(now - (6 - i) * 24 * 60 * 60 * 1000);
         return { label: DAY[d.getDay()], value: 0 };
       });
-      items.forEach((item) => {
-        const age = now - (item.timestamp || 0) * 1000;
+      entries.forEach((e) => {
+        const age = now - e.ts * 1000;
         const dayIdx = 6 - Math.min(6, Math.floor(age / (24 * 60 * 60 * 1000)));
-        buckets[dayIdx].value += parseFloat(item.cost) || 0;
+        buckets[dayIdx].value += e.cost;
       });
       return buckets;
     }
@@ -68,15 +109,15 @@ function SpendChart({ items, filterId }) {
       d.setMonth(d.getMonth() - (11 - i));
       return { label: d.toLocaleString('default', { month: 'short' }), value: 0 };
     });
-    items.forEach((item) => {
-      const d = new Date((item.timestamp || 0) * 1000);
+    entries.forEach((e) => {
+      const d = new Date(e.ts * 1000);
       const monthsAgo = (new Date(now).getFullYear() - d.getFullYear()) * 12
         + new Date(now).getMonth() - d.getMonth();
       const idx = 11 - Math.min(11, monthsAgo);
-      if (idx >= 0) buckets[idx].value += parseFloat(item.cost) || 0;
+      if (idx >= 0) buckets[idx].value += e.cost;
     });
     return buckets;
-  }, [items, filterId]);
+  }, [entries, filterId]);
 
   const max = Math.max(...bars.map((b) => b.value), 0.001);
   if (!bars.some((b) => b.value > 0)) return null;
@@ -111,7 +152,22 @@ function SpendChart({ items, filterId }) {
 }
 
 // ── Main modal ────────────────────────────────────────────────────────────────
-export function SpendingModal({ isOpen, onClose, historyItems = [], spendFilter = 'overall', onFilterChange }) {
+/**
+ * SpendingModal
+ *
+ * Accepts either:
+ *   - `spendingEntries` — from useSpending (spending log, includes failed/cancelled)
+ *   - `historyItems`    — legacy fallback from useHistory
+ *
+ * When `spendingEntries` is provided and non-empty, it takes precedence.
+ */
+export function SpendingModal({
+  isOpen, onClose,
+  spendingEntries = null,   // preferred: from useSpending
+  historyItems = [],        // legacy fallback
+  spendFilter = 'overall',
+  onFilterChange,
+}) {
   const [filter, setFilter] = useState(spendFilter);
 
   useEffect(() => { setFilter(spendFilter); }, [spendFilter]);
@@ -121,9 +177,18 @@ export function SpendingModal({ isOpen, onClose, historyItems = [], spendFilter 
     onFilterChange?.(f);
   };
 
-  const filtered = useMemo(() => filterItems(historyItems, filter), [historyItems, filter]);
+  // Use spending log when available; fall back to history items
+  const allEntries = useMemo(() => {
+    const source = (spendingEntries && spendingEntries.length > 0)
+      ? spendingEntries
+      : historyItems;
+    return source.map(normalizeEntry);
+  }, [spendingEntries, historyItems]);
+
+  const filtered = useMemo(() => filterEntries(allEntries, filter), [allEntries, filter]);
   const stats = useMemo(() => calcBreakdown(filtered), [filtered]);
   const filterLabel = FILTERS.find((f) => f.id === filter)?.label || '';
+  const usingLog = spendingEntries && spendingEntries.length > 0;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Spending Breakdown" size="md">
@@ -152,6 +217,7 @@ export function SpendingModal({ isOpen, onClose, historyItems = [], spendFilter 
           <div className="text-xs text-text-muted">
             {stats.count} generation{stats.count !== 1 ? 's' : ''}
             {filter !== 'overall' ? ` — ${filterLabel.toLowerCase()}` : ' total'}
+            {usingLog && <span className="ml-1 text-success/60">(incl. cancelled/failed)</span>}
           </div>
         </div>
 
@@ -185,24 +251,35 @@ export function SpendingModal({ isOpen, onClose, historyItems = [], spendFilter 
         </div>
 
         {/* Spend-over-time chart */}
-        <SpendChart items={filtered} filterId={filter} />
+        <SpendChart entries={filtered} filterId={filter} />
 
         {/* Filtered item list */}
         {filtered.length > 0 && (
           <div className="flex flex-col gap-1">
             <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1">Generations</div>
             <div className="max-h-40 overflow-y-auto flex flex-col gap-0.5">
-              {filtered.slice(0, 30).map((item) => (
-                <div key={item.id} className="flex items-center justify-between py-1 border-b border-border-default/40">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[10px] text-text-secondary truncate">{item.display_name || item.car_folder}</div>
-                    <div className="text-[9px] text-text-muted">
-                      {item.timestamp ? new Date(item.timestamp * 1000).toLocaleString() : ''}
+              {filtered.slice(0, 30).map((e) => {
+                const statusLabel = STATUS_LABEL[e.status];
+                const amountColor = STATUS_COLOR[e.status] || 'text-warning';
+                return (
+                  <div key={e.id} className="flex items-center justify-between py-1 border-b border-border-default/40">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-text-secondary truncate">{e.label || e.car || '—'}</span>
+                        {statusLabel && (
+                          <span className={`text-[8px] font-semibold uppercase tracking-wide ${amountColor}`}>{statusLabel}</span>
+                        )}
+                      </div>
+                      <div className="text-[9px] text-text-muted">
+                        {e.ts ? new Date(e.ts * 1000).toLocaleString() : ''}
+                      </div>
+                    </div>
+                    <div className={`text-[10px] flex-shrink-0 ml-2 ${amountColor}`}>
+                      {e.estimated ? '~' : ''}${e.cost.toFixed(3)}
                     </div>
                   </div>
-                  <div className="text-[10px] text-warning flex-shrink-0 ml-2">~${parseFloat(item.cost || 0).toFixed(3)}</div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -212,3 +289,4 @@ export function SpendingModal({ isOpen, onClose, historyItems = [], spendFilter 
 }
 
 export default SpendingModal;
+

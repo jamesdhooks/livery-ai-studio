@@ -12,19 +12,21 @@ import { CarsTab } from './tabs/CarsTab';
 import { SamplePromptsModal } from './modals/SamplePromptsModal';
 import { SpendingModal } from './modals/SpendingModal';
 import { PromptHistoryModal } from './modals/PromptHistoryModal';
-import { useConfig } from '../hooks/useConfig';
-import { useSession } from '../hooks/useSession';
-import { useCars } from '../hooks/useCars';
-import { useGenerate } from '../hooks/useGenerate';
-import { useHistory } from '../hooks/useHistory';
-import { useUpscale } from '../hooks/useUpscale';
+import { useConfigContext } from '../context/ConfigContext';
+import { useSessionContext } from '../context/SessionContext';
+import { useCarsContext } from '../context/CarsContext';
+import { useGenerateContext } from '../context/GenerateContext';
+import { useHistoryContext } from '../context/HistoryContext';
+import { useSpendingContext } from '../context/SpendingContext';
+import { useUpscaleContext } from '../context/UpscaleContext';
+import { useSpecularContext } from '../context/SpecularContext';
 import { useTheme } from '../hooks/useTheme';
-import { useCarOverrides } from '../hooks/useCarOverrides';
 import generateService from '../services/GenerateService';
 import upscaleService from '../services/UpscaleService';
 import logService from '../services/LogService';
 
 function App() {
+  // ── Local UI state ────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState(() => {
     try {
       return localStorage.getItem('lastActiveTab') || 'getting-started';
@@ -32,10 +34,7 @@ function App() {
       return 'getting-started';
     }
   });
-  const [selectedCar, setSelectedCar] = useState('');
   const [spendFilter, setSpendFilter] = useState('overall');
-  const [carWireUrl, setCarWireUrl] = useState('');
-  const [carDiffuseUrl, setCarDiffuseUrl] = useState('');
   const [capabilities, setCapabilities] = useState({ upscale_available: false });
 
   // Modals
@@ -43,124 +42,55 @@ function App() {
   const [showSpending, setShowSpending] = useState(false);
   const [showPromptHistory, setShowPromptHistory] = useState(false);
 
-
   // Prompt injection state (from modals → GenerateTab)
   const [injectedPrompt, setInjectedPrompt] = useState(null);
-
-  // Iterate injection state — carries the livery_path of the item to iterate on
-  // Cleared by GenerateTab after it applies the value (same pattern as injectedPrompt)
   const [iteratePath, setIteratePath] = useState(null);
+  const [regenerateData, setRegenerateData] = useState(null);
 
-  // Hooks
-  const { config, loading: configLoading, saveConfig } = useConfig();
-  const { session, saveSession } = useSession();
-  const { cars, loading: carsLoading, getWireframeUrl, getDiffuseUrl } = useCars();
+  // ── Contexts ──────────────────────────────────────────────────────────────
+  const { config, loading: configLoading, saveConfig } = useConfigContext();
+  const { session, saveSession } = useSessionContext();
   const {
-    generating,
-    result: generateResult,
-    status: generateStatus,
-    generate,
-    uploadFile,
-    browseUploads,
-    deleteUpload,
-    clearStatus: clearGenerateStatus,
-  } = useGenerate();
+    cars, carsLoading, selectedCar, setSelectedCar, onCarChange,
+    carWireUrl, carDiffuseUrl, setBaseOverride,
+  } = useCarsContext();
+  const { generating, result: generateResult, status: generateStatus } = useGenerateContext();
+  const { items: historyItems, loading: historyLoading, loadHistory } = useHistoryContext();
   const {
-    items: historyItems,
-    loading: historyLoading,
-    loadHistory,
-    deleteItem: deleteHistory,
-    getTotalSpend,
-  } = useHistory();
-  const {
-    upscaling,
-    deploying,
-    result: upscaleResult,
-    status: upscaleStatus,
-    upscale,
-    deploy,
-    clearStatus: clearUpscaleStatus,
-  } = useUpscale();
-
+    entries, totalSpend, lastTransaction,
+  } = useSpendingContext();
+  const { deploying } = useUpscaleContext();
   const { theme, setTheme } = useTheme();
-  const {
-    wireOverride,
-    baseOverride,
-    loading: overridesLoading,
-    setWireOverride,
-    setBaseOverride,
-    clearWireOverride,
-    clearBaseOverride,
-  } = useCarOverrides(selectedCar || null);
 
-  // Load capabilities from config
+  // ── Derived state / effects ───────────────────────────────────────────────
   useEffect(() => {
     if (config) {
       setCapabilities({ upscale_available: config.upscale_available || false });
     }
   }, [config]);
 
-  // Restore selected car from session — only if the car still exists in the library
-  useEffect(() => {
-    if (!session?.last_car || selectedCar) return;
-    // Wait until cars have loaded before validating
-    if (cars.length === 0) return;
-    const exists = cars.some((c) => c.folder === session.last_car);
-    if (exists) {
-      setSelectedCar(session.last_car);
-    } else {
-      logService.log(`[car] Saved car "${session.last_car}" no longer in library — clearing selection`);
-    }
-  }, [session, cars]);
-
-  // If the currently selected car is removed from the library, clear the selection
-  useEffect(() => {
-    if (selectedCar && cars.length > 0) {
-      const exists = cars.some((c) => c.folder === selectedCar);
-      if (!exists) {
-        logService.log(`[car] Selected car "${selectedCar}" no longer in library — clearing`);
-        setSelectedCar('');
-      }
-    }
-  }, [cars]);
-
-  // Update car assets when selected car changes
-  useEffect(() => {
-    if (selectedCar) {
-      const carObj = cars.find(c => c.folder === selectedCar);
-      const slug = carObj?.slug || selectedCar;
-      setCarWireUrl(getWireframeUrl(slug));
-      setCarDiffuseUrl(getDiffuseUrl(slug));
-      logService.log(`[car] Selected: ${selectedCar} (slug: ${slug})`);
-    }
-  }, [selectedCar, cars, getWireframeUrl, getDiffuseUrl]);
-
-  // Load history on mount so spend total is available immediately
-  useEffect(() => {
-    loadHistory();
-  }, []);
-
   // Reload history whenever the history tab is opened
   useEffect(() => {
     if (activeTab === 'history') {
       loadHistory();
     }
-  }, [activeTab]);
+  }, [activeTab, loadHistory]);
 
-  const handleCarChange = useCallback((folder) => {
-    setSelectedCar(folder);
-    saveSession({ last_car: folder });
-  }, [saveSession]);
+  // Sync spendFilter from config on load
+  useEffect(() => {
+    if (config?.spend_filter) setSpendFilter(config.spend_filter);
+  }, [config?.spend_filter]);
 
+  // ── Handlers ──────────────────────────────────────────────────────────────
   const handleTabChange = useCallback((tab) => {
     setActiveTab(tab);
     try { localStorage.setItem('lastActiveTab', tab); } catch {}
   }, []);
 
-  const handleDeploy = useCallback(async (liveryPath, carName, customerId) => {
-    const cid = customerId || config?.customer_id;
-    await deploy(liveryPath, carName || selectedCar, cid);
-  }, [deploy, config, selectedCar]);
+  const handleSpendFilterChange = useCallback((f) => {
+    setSpendFilter(f);
+    saveConfig({ spend_filter: f });
+  }, [saveConfig]);
 
   const handleClearIRacing = useCallback(async () => {
     try {
@@ -190,31 +120,23 @@ function App() {
   }, [selectedCar]);
 
   const handleIterateFrom = useCallback((item) => {
-    // Set the base override for the current car so GenerateTab picks it up immediately
     if (item.livery_path) {
       setBaseOverride(item.livery_path);
     }
-    // Signal GenerateTab to switch to Modify mode and apply the iterate path
     setIteratePath(item.livery_path || null);
     setActiveTab('generate');
-    saveSession({ last_mode: 'modify' });
-  }, [saveSession, setBaseOverride]);
+  }, [setBaseOverride]);
+
+  const handleRegenerateFrom = useCallback((item) => {
+    setRegenerateData({ prompt: item.prompt || '', context: item.context || '' });
+    setActiveTab('generate');
+    saveSession({ last_mode: 'new' });
+  }, [saveSession]);
 
   const handleNavigateToHistory = useCallback((itemId) => {
     setActiveTab('history');
-    // Store the target item ID so HistoryTab can focus on it
-    try { sessionStorage.setItem('history-focus-id', itemId); } catch { /* ignore */ }
+    try { sessionStorage.setItem('history-focus-id', itemId); } catch {}
   }, []);
-
-  // Sync spendFilter from config on load
-  useEffect(() => {
-    if (config?.spend_filter) setSpendFilter(config.spend_filter);
-  }, [config?.spend_filter]);
-
-  const handleSpendFilterChange = useCallback((f) => {
-    setSpendFilter(f);
-    saveConfig({ spend_filter: f });
-  }, [saveConfig]);
 
   const handleEnhancePrompt = useCallback(async (prompt, context, mode) => {
     try {
@@ -225,7 +147,15 @@ function App() {
     }
   }, []);
 
-  const totalSpend = getTotalSpend(spendFilter);
+  const handleNavigateToSpecular = useCallback((liveryPath, carFolder) => {
+    if (carFolder) {
+      setSelectedCar(carFolder);
+      saveSession({ last_car: carFolder });
+    }
+    setBaseOverride(liveryPath);
+    saveSession({ last_mode: 'modify' });
+    setActiveTab('specular');
+  }, [setSelectedCar, setBaseOverride, saveSession]);
 
   // ── App loading splash ────────────────────────────────────────────────────
   if (configLoading || carsLoading) {
@@ -235,7 +165,6 @@ function App() {
         <div className="text-[22px] font-bold text-text-primary tracking-tight">
           Livery <span className="text-accent-teal">A</span><span className="text-accent-wine">I</span> Studio
         </div>
-        {/* Spinner */}
         <svg className="animate-spin text-text-muted" width="22" height="22" viewBox="0 0 24 24" fill="none">
           <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
           <path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
@@ -249,18 +178,29 @@ function App() {
       <TopBar
         activeTab={activeTab}
         onTabChange={handleTabChange}
-        totalSpend={totalSpend}
+        totalSpend={(() => {
+          if (spendFilter === 'overall') return totalSpend;
+          const now = Date.now();
+          const cutoff = spendFilter === 'today'
+            ? now - 24 * 60 * 60 * 1000
+            : now - 7 * 24 * 60 * 60 * 1000;
+          return (entries ?? [])
+            .filter(e => (e.ts ?? 0) * 1000 >= cutoff)
+            .reduce((s, e) => s + (e.cost ?? 0), 0);
+        })()}
         spendFilter={spendFilter}
         onSpendingClick={() => setShowSpending(true)}
         historyLoading={historyLoading}
+        generating={generating}
         theme={theme}
         onThemeChange={setTheme}
+        lastTransaction={lastTransaction}
       />
 
       <SubBar
         selectedCar={selectedCar}
         cars={cars}
-        onCarChange={handleCarChange}
+        onCarChange={onCarChange}
         onClearIRacing={handleClearIRacing}
         onClearSpec={handleClearSpec}
         onDefaultLivery={handleDefaultLivery}
@@ -270,84 +210,45 @@ function App() {
       <main className="flex-1 overflow-hidden">
         {activeTab === 'generate' && (
           <GenerateTab
-            selectedCar={selectedCar}
-            carWireUrl={carWireUrl}
-            carDiffuseUrl={carDiffuseUrl}
-            generating={generating}
-            lastResult={generateResult}
-            generateStatus={generateStatus}
-            onGenerate={generate}
-            onClearStatus={clearGenerateStatus}
-            onUploadFile={uploadFile}
-            onBrowseUploads={browseUploads}
-            onDeleteUpload={deleteUpload}
-            session={session}
-            onSaveSession={saveSession}
-            config={config}
-            onDeploy={handleDeploy}
-            deploying={deploying}
-            onOpenSamplePrompts={() => setShowSamplePrompts(true)}
-            onOpenPromptHistory={() => setShowPromptHistory(true)}
             capabilities={capabilities}
             injectedPrompt={injectedPrompt}
             onInjectedPromptUsed={() => setInjectedPrompt(null)}
             onEnhancePrompt={handleEnhancePrompt}
             iteratePath={iteratePath}
             onIteratePathUsed={() => setIteratePath(null)}
-            wireOverride={wireOverride}
-            baseOverride={baseOverride}
-            overridesLoading={overridesLoading}
-            onSetWireOverride={setWireOverride}
-            onSetBaseOverride={setBaseOverride}
-            onClearWireOverride={clearWireOverride}
-            onClearBaseOverride={clearBaseOverride}
+            regenerateData={regenerateData}
+            onRegenerateDataUsed={() => setRegenerateData(null)}
+            onNavigateToSpecular={() => setActiveTab('specular')}
+            onOpenSamplePrompts={() => setShowSamplePrompts(true)}
+            onOpenPromptHistory={() => setShowPromptHistory(true)}
           />
         )}
         {activeTab === 'history' && (
           <HistoryTab
-            items={historyItems}
-            loading={historyLoading}
-            onLoad={loadHistory}
-            onDelete={deleteHistory}
-            onDeploy={handleDeploy}
-            deploying={deploying}
             onIterateFrom={handleIterateFrom}
+            onRegenerateFrom={handleRegenerateFrom}
+            onNavigateToSpecular={handleNavigateToSpecular}
+            onSwitchTab={setActiveTab}
           />
         )}
         {activeTab === 'upscale' && (
           <UpscaleTab
-            upscaling={upscaling}
-            upscaleResult={upscaleResult}
-            upscaleStatus={upscaleStatus}
-            onUpscale={upscale}
-            onClearStatus={clearUpscaleStatus}
-            onDeploy={handleDeploy}
-            deploying={deploying}
-            config={config}
             capabilities={capabilities}
           />
         )}
-        {/* CarsTab is always mounted so import progress survives tab switches */}
         <div className={activeTab === 'cars' ? 'h-full overflow-hidden' : 'hidden'}>
           <CarsTab
-            cars={cars}
-            selectedFolder={selectedCar}
-            onSelectCar={handleCarChange}
-            getWireframeUrl={getWireframeUrl}
-            historyItems={historyItems}
             onNavigateToHistory={handleNavigateToHistory}
-            starredCars={config?.starred_cars || []}
-            onStarredChange={(folders) => saveConfig({ starred_cars: folders })}
           />
         </div>
         {activeTab === 'sponsors' && <SponsorsTab />}
-        {activeTab === 'specular' && <SpecularTab />}
-        {activeTab === 'settings' && (
-          <SettingsTab
-            config={config}
-            onSaveConfig={saveConfig}
-            loading={configLoading}
+        {activeTab === 'specular' && (
+          <SpecularTab
+            capabilities={capabilities}
           />
+        )}
+        {activeTab === 'settings' && (
+          <SettingsTab />
         )}
         {activeTab === 'getting-started' && <GettingStartedTab />}
       </main>
@@ -366,6 +267,7 @@ function App() {
       <SpendingModal
         isOpen={showSpending}
         onClose={() => setShowSpending(false)}
+        spendingEntries={entries}
         historyItems={historyItems}
         spendFilter={spendFilter}
         onFilterChange={handleSpendFilterChange}
@@ -380,7 +282,6 @@ function App() {
           setShowPromptHistory(false);
         }}
       />
-
     </div>
   );
 }

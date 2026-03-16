@@ -119,6 +119,15 @@ for _bp in (bp_config, bp_cars, bp_files, bp_generate, bp_history, bp_window):
 
 logger.info("Flask blueprints registered")
 
+# ── Startup: Backfill spending log from existing history ─────────────────────
+try:
+    from server import spending as spending_log
+    if spending_log.backfill_from_history():
+        logger.info("Spending log backfilled from history sidecars")
+    else:
+        logger.info("Spending log already populated or no history to backfill")
+except Exception as e:
+    logger.error("Failed to backfill spending log: %s", e)
 
 # ── Global error handler — logs full traceback for every 500 ─────────────────
 @app.errorhandler(Exception)
@@ -218,26 +227,35 @@ def main():
     server.start()
 
     port = int(os.environ.get("FLASK_PORT", "5199"))
+    web_only = os.environ.get("WEB_ONLY", "0") == "1"
 
     _apply_app_user_model_id()
     ico = _ensure_ico()
-    os.environ['PYWEBVIEW_ICON'] = ico
 
-    win = webview.create_window(
-        title="Livery AI Studio",
-        url=f"http://127.0.0.1:{port}",
-        min_size=(800, 700),
-        resizable=True,
-        text_select=True,
-        maximized=True,
-    )
-    try:
-        webview.start(private_mode=False)
-    except Exception:
-        logger.exception("pywebview failed to start — falling back to browser")
+    if web_only:
+        logger.info("Launching in browser (web-only mode)")
         import webbrowser
         webbrowser.open(f"http://127.0.0.1:{port}")
-        input("Press Enter to exit...")
+        # Keep Flask running
+        start_flask()
+    else:
+        os.environ['PYWEBVIEW_ICON'] = ico
+
+        win = webview.create_window(
+            title="Livery AI Studio",
+            url=f"http://127.0.0.1:{port}",
+            min_size=(800, 700),
+            resizable=True,
+            text_select=True,
+            maximized=True,
+        )
+        try:
+            webview.start(private_mode=False)
+        except Exception:
+            logger.exception("pywebview failed to start — falling back to browser")
+            import webbrowser
+            webbrowser.open(f"http://127.0.0.1:{port}")
+            input("Press Enter to exit...")
 
 
 if __name__ == "__main__":
