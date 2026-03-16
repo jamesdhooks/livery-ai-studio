@@ -843,7 +843,12 @@ export function GenerateTab({
           conversationLog={lastResult?.conversation_log}
           onDeploy={lastResult && hasCustomerId ? () => onDeploy?.(lastResult.livery_path, selectedCar, config?.customer_id) : undefined}
           deploying={deploying}
-          onIterate={lastResult ? () => { setMode('iterate'); setIterateEnabled(true); } : undefined}
+          onIterate={lastResult?.livery_path ? () => {
+            setMode('modify');
+            setIterateEnabled(true);
+            onSetBaseOverride?.(lastResult.livery_path);
+            onSaveSession?.({ last_mode: 'modify' });
+          } : undefined}
           generating={generating}
         />
       </div>
