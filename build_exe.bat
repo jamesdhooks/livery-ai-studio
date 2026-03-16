@@ -47,8 +47,10 @@ echo.
 
 :: Find Python 3.10+
 set "PY_CMD="
-for %%V in (3.13 3.12 3.11 3.10) do (
+for %%V in (3.14 3.13 3.12 3.11 3.10) do (
+    if "!PY_CMD!"=="" (
         py -%%V --version >nul 2>&1
+        if !errorlevel!==0 set "PY_CMD=py -%%V"
     )
 )
 if "%PY_CMD%"=="" (

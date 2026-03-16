@@ -13,6 +13,8 @@ Usage:
         [--customer-id 123456]
 """
 
+from __future__ import annotations
+
 import argparse
 import base64
 import os

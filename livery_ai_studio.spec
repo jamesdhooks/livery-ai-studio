@@ -58,6 +58,7 @@ a = Analysis(
     hiddenimports=[
         # pywebview Windows backends
         "webview.platforms.winforms",
+        "webview.platforms.edgechromium",
         "webview.js.drag",
         # Flask ecosystem
         "flask",

@@ -33,8 +33,8 @@ class UpscaleService extends BaseService {
    */
   async deploy(liveryPath, carName, customerId) {
     return this.post('/deploy', {
-      livery_path: liveryPath,
-      car_name: carName,
+      path: liveryPath,
+      car_folder: carName,
       customer_id: customerId,
     });
   }
@@ -56,6 +56,16 @@ class UpscaleService extends BaseService {
    */
   async clearPaint(carFolder, type = 'texture') {
     return this.post('/clear-paint', { car_folder: carFolder, type });
+  }
+
+  /**
+   * Open the native Save-As dialog to download a source file (e.g. TGA).
+   * @param {string} sourcePath - Absolute server-side path to copy from.
+   * @param {string} [filename]  - Suggested filename in the dialog.
+   * @returns {Promise<{path: string|null}>}
+   */
+  async downloadFile(sourcePath, filename) {
+    return this.post('/download-file', { path: sourcePath, filename: filename || '' });
   }
 
   /**

@@ -58,12 +58,11 @@ export function LiveryDetailPanel({
     }
   };
 
-  const handleDownload = () => {
-    if (!imageUrl) return;
-    const a = document.createElement('a');
-    a.href = imageUrl;
-    a.download = downloadName;
-    a.click();
+  const handleDownload = async () => {
+    if (!imagePath) return;
+    try {
+      await upscaleService.downloadFile(imagePath, downloadName.replace(/\.png$/i, '.tga'));
+    } catch { /* ignore — user cancelled or window not available */ }
   };
 
   const handleOpenExplorer = async () => {
@@ -169,7 +168,7 @@ export function LiveryDetailPanel({
           <Button variant="secondary" size="sm" onClick={handleCopy} disabled={!imageUrl}>
             Copy
           </Button>
-          <Button variant="secondary" size="sm" onClick={handleDownload} disabled={!imageUrl}>
+          <Button variant="secondary" size="sm" onClick={handleDownload} disabled={!imagePath}>
             Download
           </Button>
           {imagePath && (

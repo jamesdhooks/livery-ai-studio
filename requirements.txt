@@ -3,7 +3,7 @@
 # For GPU upscaling, run: start.bat --gpu  (or start.sh --gpu)
 
 # Google Gemini SDK
-google-genai>=1.56.0
+google-genai>=1.47.0
 
 # SSL certificate handling
 certifi>=2024.0.0

@@ -48,8 +48,12 @@ echo.
 
 :: ── Find Python 3.10+ ────────────────────────────────────────────────────────
 set "PY_CMD="
-py -3.13 --version >nul 2>&1
-if %errorlevel%==0 set "PY_CMD=py -3.13"
+py -3.14 --version >nul 2>&1
+if %errorlevel%==0 set "PY_CMD=py -3.14"
+if "%PY_CMD%"=="" (
+    py -3.13 --version >nul 2>&1
+    if %errorlevel%==0 set "PY_CMD=py -3.13"
+)
 if "%PY_CMD%"=="" (
     py -3.12 --version >nul 2>&1
     if %errorlevel%==0 set "PY_CMD=py -3.12"

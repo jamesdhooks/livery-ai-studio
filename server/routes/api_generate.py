@@ -291,8 +291,10 @@ def set_enhance_guidance():
     """Save custom enhance guidance to config."""
     data = request.json or {}
     guidance = data.get("guidance", "").strip()
-    from server.config import save_config
-    save_config({"enhance_guidance": guidance})
+    from server.config import load_config, save_config
+    config = load_config()
+    config["enhance_guidance"] = guidance
+    save_config(config)
     return jsonify({"ok": True})
 
 

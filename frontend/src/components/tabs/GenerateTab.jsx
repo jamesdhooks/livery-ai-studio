@@ -101,6 +101,9 @@ export function GenerateTab({
   onSetBaseOverride,
   onClearWireOverride,
   onClearBaseOverride,
+  // Iterate injection — livery path to set as base texture; cleared by App after use
+  iteratePath,
+  onIteratePathUsed,
 }) {
   const [prompt, setPrompt] = useState(session?.last_prompt || '');
   const [context, setContext] = useState(session?.last_context || '');
@@ -157,6 +160,15 @@ export function GenerateTab({
       onInjectedPromptUsed?.();
     }
   }, [injectedPrompt]);
+
+  // Apply iterate path — switch to Modify mode and set the base texture
+  useEffect(() => {
+    if (!iteratePath) return;
+    setMode('modify');
+    onSaveSession?.({ last_mode: 'modify' });
+    // The base override is already set in App via setBaseOverride; signal consumed
+    onIteratePathUsed?.();
+  }, [iteratePath]);
 
   // Update preview when result or base changes
   useEffect(() => {

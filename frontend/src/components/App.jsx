@@ -47,6 +47,10 @@ function App() {
   // Prompt injection state (from modals → GenerateTab)
   const [injectedPrompt, setInjectedPrompt] = useState(null);
 
+  // Iterate injection state — carries the livery_path of the item to iterate on
+  // Cleared by GenerateTab after it applies the value (same pattern as injectedPrompt)
+  const [iteratePath, setIteratePath] = useState(null);
+
   // Hooks
   const { config, loading: configLoading, saveConfig } = useConfig();
   const { session, saveSession } = useSession();
@@ -186,12 +190,15 @@ function App() {
   }, [selectedCar]);
 
   const handleIterateFrom = useCallback((item) => {
+    // Set the base override for the current car so GenerateTab picks it up immediately
+    if (item.livery_path) {
+      setBaseOverride(item.livery_path);
+    }
+    // Signal GenerateTab to switch to Modify mode and apply the iterate path
+    setIteratePath(item.livery_path || null);
     setActiveTab('generate');
-    saveSession({
-      base_texture_path: item.livery_path,
-      last_mode: 'modify',
-    });
-  }, [saveSession]);
+    saveSession({ last_mode: 'modify' });
+  }, [saveSession, setBaseOverride]);
 
   const handleNavigateToHistory = useCallback((itemId) => {
     setActiveTab('history');
@@ -285,6 +292,8 @@ function App() {
             injectedPrompt={injectedPrompt}
             onInjectedPromptUsed={() => setInjectedPrompt(null)}
             onEnhancePrompt={handleEnhancePrompt}
+            iteratePath={iteratePath}
+            onIteratePathUsed={() => setIteratePath(null)}
             wireOverride={wireOverride}
             baseOverride={baseOverride}
             overridesLoading={overridesLoading}

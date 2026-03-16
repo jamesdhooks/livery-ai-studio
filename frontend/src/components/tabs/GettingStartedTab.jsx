@@ -755,6 +755,40 @@ export function GettingStartedTab() {
               </ul>
             </FaqItem>
 
+            <FaqItem question="The result doesn't match the wireframe — panels look wrong or the design is misaligned">
+              <p>
+                This is expected behaviour. Gemini generates a 2D texture image without any true 3D
+                understanding of the car's geometry, so panel boundaries, seams, and element placement
+                are inherently approximate. <strong className="text-text-primary">The AI has a mind of its own
+                — results are not guaranteed.</strong>
+              </p>
+              <ul className="mt-2 ml-4 list-disc space-y-1">
+                <li>
+                  <strong>Simplify your prompt</strong> — fewer design elements, plainer colour schemes,
+                  and avoiding complex logos tend to align better with the UV layout.
+                </li>
+                <li>
+                  <strong>Regenerate a few times</strong> — generation is probabilistic; the next attempt
+                  may align much better even with the same prompt.
+                </li>
+                <li>
+                  <strong>Iterate with Modify mode</strong> — use <em>"Iterate on This"</em> from a
+                  promising result and give targeted correction instructions (e.g. <em>"shift the stripe
+                  down so it runs along the door sill"</em>).
+                </li>
+                <li>
+                  <strong>Adjust in an image editor</strong> — treat the AI output as a starting point
+                  and do a quick manual touch-up in Photoshop, GIMP, or Paint.NET using the car's UV
+                  template as a layer guide.
+                </li>
+              </ul>
+              <div className="mt-3 p-3 bg-bg-card border border-warning/20 rounded text-[12px] text-text-secondary leading-relaxed">
+                <IconAlertTriangle className="inline text-warning w-3.5 h-3.5 mr-1.5 align-text-bottom" />
+                Perfect alignment between AI output and UV wireframe is not a guaranteed feature of this
+                tool. Prompting style, model choice, and a degree of luck all play a role.
+              </div>
+            </FaqItem>
+
             <FaqItem question="How much does each generation cost?">
               <p>You are charged directly by Google per generated image:</p>
               <ul className="mt-2 ml-4 list-disc space-y-1">

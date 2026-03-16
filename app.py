@@ -231,7 +231,13 @@ def main():
         text_select=True,
         maximized=True,
     )
-    webview.start(private_mode=False)
+    try:
+        webview.start(private_mode=False)
+    except Exception:
+        logger.exception("pywebview failed to start — falling back to browser")
+        import webbrowser
+        webbrowser.open(f"http://127.0.0.1:{port}")
+        input("Press Enter to exit...")
 
 
 if __name__ == "__main__":

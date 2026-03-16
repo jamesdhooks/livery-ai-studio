@@ -22,6 +22,8 @@ The script resolves the Documents folder correctly whether or not
 OneDrive redirection is active.
 """
 
+from __future__ import annotations
+
 import argparse
 import os
 import shutil

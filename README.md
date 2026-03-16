@@ -231,6 +231,7 @@ livery-ai-studio/
 | No image returned | Gemini may be at capacity — wait and retry, or switch models. |
 | Upscale tab shows warning | Run `start.bat --gpu`. Requires NVIDIA GPU. |
 | Poor quality | Use a more detailed prompt, a clean wireframe, and the Pro model. |
+| Result doesn't match the wireframe / panels look wrong | The AI has a mind of its own — results are not guaranteed. Try simplifying your prompt (fewer elements, plainer colours), regenerate a few times, or use Modify mode to nudge a promising result. Panel alignment is inherently approximate because Gemini is generating a 2D texture without true 3D awareness. |
 
 ---
 
