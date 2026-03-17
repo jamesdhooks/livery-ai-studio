@@ -135,7 +135,7 @@ export function CarPicker({ cars = [], selectedFolder = '', onChange }) {
       {/* Trigger */}
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 px-2.5 h-[26px] min-w-[160px] max-w-[280px] bg-bg-input border border-border-default rounded text-xs text-text-primary hover:border-accent/50 transition-all duration-150 cursor-pointer"
+        className="flex items-center gap-2 px-2.5 h-[22px] min-w-[160px] max-w-[280px] bg-bg-input border border-border-default rounded text-xs text-text-primary hover:border-accent/50 transition-all duration-150 cursor-pointer"
       >
         <span className="text-text-muted text-xs">▼</span>
         <span className="flex-1 text-left truncate">

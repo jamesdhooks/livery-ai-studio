@@ -8,21 +8,37 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700&display=swap" rel="stylesheet" />
     <title>Livery AI Studio</title>
-    <script type="module" crossorigin src="/assets/index-dVx9HxdQ.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-CCzbco2A.css">
+    <script type="module" crossorigin src="/assets/index-BsQ_2ODc.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-Da2TXxzN.css">
   </head>
   <body>
     <div id="root">
       <!-- Loading screen shown until React mounts -->
-      <div id="loading-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#0d0f13;gap:16px;">
+      <div id="loading-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#0d0f13;gap:16px;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;opacity:1;transition:opacity 1s ease-out;pointer-events:auto;">
         <img src="/icon.png" alt="" width="64" height="64" style="border-radius:12px;" />
         <div style="font-family:Inter,system-ui,sans-serif;font-size:15px;font-weight:600;color:#e8eaf0;letter-spacing:0.02em;">Livery AI Studio</div>
         <div class="loading-spinner"></div>
         <style>
           .loading-spinner{width:28px;height:28px;border:3px solid #2a2f40;border-top-color:#4a6cf7;border-radius:50%;animation:spin .8s linear infinite}
           @keyframes spin{to{transform:rotate(360deg)}}
+          #loading-screen.fade-out{opacity:0;pointer-events:none}
         </style>
       </div>
     </div>
+    <script>
+      // Hide the initial loading screen after React renders + 1 second minimum display
+      window.hideLoadingScreen = function() {
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen) {
+          loadingScreen.classList.add('fade-out');
+          // Remove from DOM after fade completes (1000ms)
+          setTimeout(() => {
+            if (loadingScreen.parentNode) {
+              loadingScreen.remove();
+            }
+          }, 1000);
+        }
+      };
+    </script>
   </body>
 </html>

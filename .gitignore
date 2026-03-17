@@ -72,3 +72,4 @@ frontend/dist/
 /static/assets/
 
 app.log
+images_base64.txt

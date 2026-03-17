@@ -76,33 +76,9 @@ def update_config():
 @bp.route("/api/session", methods=["GET"])
 def get_session():
     config = load_config()
-    
-    # Legacy fallback: migrate old flat keys to new mode-based structure
-    mode_state = config.get("modeState", {
-        "new": {
-            "prompt": config.get("last_prompt_new", config.get("last_prompt", "")),
-            "context": config.get("last_context_new", config.get("last_context", "")),
-            "referencePaths": config.get("last_refs_new", config.get("reference_image_paths", [])),
-            "referenceContext": config.get("last_refctx_new", config.get("reference_context", "")),
-        },
-        "modify": {
-            "prompt": config.get("last_prompt_modify", ""),
-            "context": config.get("last_context_modify", ""),
-            "referencePaths": config.get("last_refs_modify", []),
-            "referenceContext": config.get("last_refctx_modify", ""),
-        }
-    })
-    
-    has_structured = "modeState" in config
-    print(f"[SESSION_GET] Config has modeState: {has_structured}", flush=True)
-    if has_structured:
-        print(f"[SESSION_GET] Returning modeState.new.prompt: {config['modeState'].get('new', {}).get('prompt', '')[:60]}", flush=True)
-    else:
-        print(f"[SESSION_GET] Using flat key fallback, last_prompt: {config.get('last_prompt', '')[:60]}", flush=True)
-    
-    response = {
+    return jsonify({
         "last_mode": config.get("last_mode", "new"),
-        "modeState": mode_state,
+        "modeState": config.get("modeState", {}),
         "last_car": config.get("last_car", ""),
         "last_model": config.get("last_model", "pro"),
         "last_is_2k": config.get("last_is_2k", False),
@@ -113,71 +89,27 @@ def get_session():
         "sponsors_wireframe_path": config.get("sponsors_wireframe_path", ""),
         "sponsors_reference_path": config.get("sponsors_reference_path", ""),
         "upscale_preference": config.get("upscale_preference", False),
-        # Legacy flat keys — kept so older clients and migration paths still work
-        "last_prompt": config.get("last_prompt", ""),
-        "last_context": config.get("last_context", ""),
-        "reference_image_paths": config.get("reference_image_paths", []),
-        "reference_context": config.get("reference_context", ""),
-    }
-    print(f"[SESSION_GET] Response has modeState key: {'modeState' in response}", flush=True)
-    return jsonify(response)
+    })
 
 
 @bp.route("/api/session", methods=["POST"])
 def save_session():
     data = request.json or {}
     config = load_config()
-    
-    print(f"[SESSION_POST] ===== REQUEST START =====", flush=True)
-    print(f"[SESSION_POST] Received keys: {list(data.keys())}", flush=True)
-    print(f"[SESSION_POST] Has 'modeState' in payload: {'modeState' in data}", flush=True)
-    
-    # Detect if the raw modeState object is being sent directly (unwrapped)
-    # This happens when the data has 'new' and 'modify' keys at the top level
-    is_raw_modestate = 'new' in data and 'modify' in data and 'modeState' not in data
-    
-    if is_raw_modestate:
-        print(f"[SESSION_POST] Detected raw modeState object (unwrapped), wrapping it", flush=True)
-        config["modeState"] = data
-    elif "modeState" in data:
-        print(f"[SESSION_POST] Received wrapped modeState", flush=True)
+
+    if "modeState" in data:
         config["modeState"] = data["modeState"]
-    
-    if "modeState" in config:
-        new_prompt = config["modeState"].get("new", {}).get("prompt", "")
-        print(f"[SESSION_POST] Saved modeState, new.prompt: {new_prompt[:60]}", flush=True)
-        
-        # ALSO save flat keys for backwards compatibility
-        new_mode = config["modeState"].get("new", {})
-        config["last_prompt_new"] = new_mode.get("prompt", "")
-        config["last_context_new"] = new_mode.get("context", "")
-        config["last_refs_new"] = new_mode.get("referencePaths", [])
-        config["last_refctx_new"] = new_mode.get("referenceContext", "")
-        
-        modify_mode = config["modeState"].get("modify", {})
-        config["last_prompt_modify"] = modify_mode.get("prompt", "")
-        config["last_context_modify"] = modify_mode.get("context", "")
-        config["last_refs_modify"] = modify_mode.get("referencePaths", [])
-        config["last_refctx_modify"] = modify_mode.get("referenceContext", "")
-        
-        print(f"[SESSION_POST] Also saved per-mode flat keys for backwards compat", flush=True)
-    else:
-        print(f"[SESSION_POST] WARNING: modeState not in config after processing!", flush=True)
-    
-    # Handle other top-level session keys
-    simple_fields = [
+
+    session_fields = [
         "last_mode", "last_car", "last_model", "last_is_2k", "last_auto_enhance",
         "wireframe_path", "base_texture_path", "sponsors_base_path",
         "sponsors_wireframe_path", "sponsors_reference_path", "upscale_preference",
     ]
-    for field in simple_fields:
+    for field in session_fields:
         if field in data:
             config[field] = data[field]
-            print(f"[SESSION_POST] Saved field: {field}", flush=True)
-    
+
     save_config(config)
-    print(f"[SESSION_POST] Config saved to disk", flush=True)
-    print(f"[SESSION_POST] ===== REQUEST END =====", flush=True)
     return jsonify({"ok": True})
 
 

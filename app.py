@@ -198,7 +198,7 @@ def _apply_app_user_model_id():
 
 # ── Flask server thread ───────────────────────────────────────────────────────
 def start_flask():
-    port = int(os.environ.get("FLASK_PORT", "5199"))
+    port = int(os.environ.get("FLASK_PORT", "6173"))
     logger.info("Flask starting on http://127.0.0.1:%d", port)
     app.run(host="127.0.0.1", port=port, debug=False, use_reloader=False)
 
@@ -226,7 +226,7 @@ def main():
     server = threading.Thread(target=start_flask, daemon=True)
     server.start()
 
-    port = int(os.environ.get("FLASK_PORT", "5199"))
+    port = int(os.environ.get("FLASK_PORT", "6173"))
     web_only = os.environ.get("WEB_ONLY", "0") == "1"
 
     _apply_app_user_model_id()
@@ -236,8 +236,8 @@ def main():
         logger.info("Launching in browser (web-only mode)")
         import webbrowser
         webbrowser.open(f"http://127.0.0.1:{port}")
-        # Keep Flask running
-        start_flask()
+        # Keep Flask running (already started in background thread above)
+        server.join()
     else:
         os.environ['PYWEBVIEW_ICON'] = ico
 

@@ -159,27 +159,8 @@ export function GenerateTab({
     const restoredMode = session.last_mode === 'modify' ? 'modify' : 'new';
     setMode(restoredMode);
     
-    // Build modeState from session data
-    // Priority: session.modeState (new format) > fallback to legacy flat keys with migration
     if (session.modeState) {
-      // New structured format
       setModeState(session.modeState);
-    } else {
-      // Legacy migration: construct from flat keys
-      setModeState({
-        new: {
-          prompt:           session?.last_prompt_new ?? session?.last_prompt ?? '',
-          context:          session?.last_context_new ?? session?.last_context ?? '',
-          referencePaths:   session?.last_refs_new ?? session?.reference_image_paths ?? [],
-          referenceContext: session?.last_refctx_new ?? session?.reference_context ?? '',
-        },
-        modify: {
-          prompt:           session?.last_prompt_modify ?? '',
-          context:          session?.last_context_modify ?? '',
-          referencePaths:   session?.last_refs_modify ?? [],
-          referenceContext: session?.last_refctx_modify ?? '',
-        },
-      });
     }
     
     if (session.last_auto_enhance === true) setAutoEnhance(true);
@@ -453,7 +434,7 @@ export function GenerateTab({
                 strokeLinecap="round"
               />
             </svg>
-            <p className="text-[11px] text-accent/60 font-medium whitespace-nowrap -mt-1 ml-16">
+            <p className="text-[10px] text-accent/60 font-medium whitespace-nowrap -mt-1 ml-16">
               select a car here
             </p>
           </div>
@@ -502,28 +483,30 @@ export function GenerateTab({
           )}
 
           {/* Mode toggle — segmented control */}
-          <div className="flex items-center gap-1 mb-1">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Mode</label>
-            <InfoTooltip position="right" maxWidth={280} text="New: Start a fresh livery from scratch. Modify: Iterate on an existing livery — upload a base texture and describe changes." />
-          </div>
-          <div className="flex rounded-lg border border-border-default overflow-hidden">
-            {[
-              { id: 'new', label: 'New', icon: <IconPlus className="w-3.5 h-3.5" /> },
-              { id: 'modify', label: 'Modify', icon: <IconPencil className="w-3.5 h-3.5" /> },
-            ].map((m) => (
-              <button
-                key={m.id}
-                onClick={() => handleModeChange(m.id)}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-[13px] font-medium transition-all cursor-pointer ${
-                  mode === m.id
-                    ? 'bg-accent/20 text-accent'
-                    : 'bg-bg-input text-text-secondary hover:bg-bg-hover'
-                }`}
-              >
-                {m.icon}
-                {m.label}
-              </button>
-            ))}
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-1">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Mode</label>
+              <InfoTooltip position="right" maxWidth={280} text="New: Start a fresh livery from scratch. Modify: Iterate on an existing livery — upload a base texture and describe changes." />
+            </div>
+            <div className="flex rounded-lg border border-border-default overflow-hidden">
+              {[
+                { id: 'new', label: 'New', icon: <IconPlus className="w-3.5 h-3.5" /> },
+                { id: 'modify', label: 'Modify', icon: <IconPencil className="w-3.5 h-3.5" /> },
+              ].map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => handleModeChange(m.id)}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-[13px] font-medium transition-all cursor-pointer ${
+                    mode === m.id
+                      ? 'bg-accent/20 text-accent'
+                      : 'bg-bg-input text-text-secondary hover:bg-bg-hover'
+                  }`}
+                >
+                  {m.icon}
+                  {m.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Wireframe + Base texture — side by side */}
@@ -546,6 +529,7 @@ export function GenerateTab({
               placeholder="Drop wireframe or click"
               onHoverPreview={setHoverPreviewUrl}
               onHoverPreviewEnd={() => setHoverPreviewUrl('')}
+              fixedHeight="h-48"
             />
             <FileUploader
               label="Base Texture"
@@ -565,6 +549,7 @@ export function GenerateTab({
               placeholder="Drop base texture or click"
               onHoverPreview={setHoverPreviewUrl}
               onHoverPreviewEnd={() => setHoverPreviewUrl('')}
+              fixedHeight="h-48"
             />
           </div>
 
@@ -647,7 +632,7 @@ export function GenerateTab({
 
           {/* Context */}
           <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-1">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-1">
               Context (optional)
               <InfoTooltip position="right" maxWidth={260} text="Additional background information that guides the AI without being part of the main prompt. Use it for consistent style rules such as 'always use matte finish' or sponsor guidelines." />
             </label>
@@ -663,7 +648,7 @@ export function GenerateTab({
           {/* Prompt */}
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-1">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-1">
                 Prompt *
                 <InfoTooltip position="right" maxWidth={280} text="Your main design description. Be as specific as possible — mention colours (use hex codes), patterns, themes, sponsors, number placement, and finish type (matte, gloss, carbon-fibre)." />
               </label>
@@ -678,16 +663,15 @@ export function GenerateTab({
                 <button
                   onClick={handleEnhance}
                   disabled={!ms.prompt.trim() || enhancing || autoEnhance}
-                  className="flex items-center gap-1 text-[11px] text-accent hover:text-accent-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  className="text-[9px] font-semibold uppercase tracking-wider text-text-secondary hover:text-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                   title={autoEnhance ? 'Manual enhance disabled — auto-enhance is enabled' : 'Enhance prompt with AI'}
                 >
-                  <IconWand className="w-3 h-3" />
                   {enhancing ? 'Enhancing…' : 'Enhance'}
                 </button>
                 <span className="text-border-default">|</span>
                 <button
                   onClick={onOpenPromptHistory}
-                  className="text-[11px] text-text-muted hover:text-text-primary transition-colors cursor-pointer"
+                  className="text-[9px] font-semibold uppercase tracking-wider text-text-secondary hover:text-accent transition-colors cursor-pointer"
                   title="Prompt history"
                 >
                   History
@@ -695,7 +679,7 @@ export function GenerateTab({
                 <span className="text-border-default">|</span>
                 <button
                   onClick={onOpenSamplePrompts}
-                  className="text-[11px] text-accent hover:text-accent-hover transition-colors cursor-pointer"
+                  className="text-[9px] font-semibold uppercase tracking-wider text-text-secondary hover:text-accent transition-colors cursor-pointer"
                   title="Sample prompts"
                 >
                   Examples
@@ -718,7 +702,7 @@ export function GenerateTab({
                 <div>Automatically improves your prompt with AI before each generation — adding detail and structure without changing your intent.</div>
                 <div className="mt-1.5 pt-1.5 border-t border-border-default text-text-muted">Uses <span className="text-text-secondary">Gemini Flash Lite</span> (text-only) at ~$0.10 / 1M tokens. A typical enhancement costs less than $0.001.</div>
               </InfoTooltip></div>
-              <div className="text-[11px] text-text-muted">AI-improve prompt before generating</div>
+              <div className="text-[10px] text-text-muted">AI-improve prompt before generating</div>
             </div>
             <Toggle checked={autoEnhance} onChange={(v) => { setAutoEnhance(v); saveSession?.({ last_auto_enhance: v }); }} id="autoEnhance" size="sm" />
           </div>
@@ -728,13 +712,13 @@ export function GenerateTab({
             <div className="flex items-center justify-between py-2 px-3 bg-bg-card rounded border border-border-default">
               <div>
                 <div className="text-[13px] font-medium text-text-primary flex items-center gap-1">Auto-iterate <InfoTooltip position="right" maxWidth={260} text="When enabled, the most recently generated livery is automatically used as the base texture for the next generation — so you can keep refining without manually re-uploading." /></div>
-                <div className="text-[11px] text-text-muted">Loads result as base for next generation</div>
+                <div className="text-[10px] text-text-muted">Loads result as base for next generation</div>
               </div>
               <Toggle checked={iterateEnabled} onChange={setIterateEnabled} id="iterateToggle" />
             </div>
           )}
 
-        </div>
+          </div>
         </div>
 
         {/* Fixed bottom section — model selector + generate button */}
@@ -757,7 +741,7 @@ export function GenerateTab({
             </div>
           )}
           {showUpscaleDisabled && (
-            <div className="flex items-center gap-2 px-3 py-2 bg-bg-card rounded border border-border-default text-[11px] text-text-muted">
+            <div className="flex items-center gap-2 px-3 py-2 bg-bg-card rounded border border-border-default text-[10px] text-text-muted">
               <span className="flex-1">GPU Upscale unavailable</span>
               <InfoTooltip position="left" maxWidth={300}>
                 <div className="space-y-1.5">
@@ -832,8 +816,6 @@ export function GenerateTab({
           onSwitchTab={() => {}}
         />
       </div>
-      </>
-      )}
 
       {/* Enhance Guidance Modal */}
       <EnhanceGuidanceModal
@@ -862,6 +844,8 @@ export function GenerateTab({
           setShowReferenceExamples(false);
         }}
       />
+      </>
+      )}
     </div>
   );
 }

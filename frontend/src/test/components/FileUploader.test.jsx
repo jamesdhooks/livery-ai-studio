@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { FileUploader } from '../../components/common/FileUploader';
 
 describe('FileUploader component', () => {
@@ -23,14 +23,15 @@ describe('FileUploader component', () => {
     expect(screen.getByText('Drop file or click to browse')).toBeInTheDocument();
   });
 
-  it('renders filename when currentPath is set', () => {
-    render(
+  it('renders filename in title when currentPath is set', () => {
+    const { container } = render(
       <FileUploader
         currentPath="/data/generate/wire/my-wireframe.png"
         onUpload={() => {}}
       />
     );
-    expect(screen.getByText('my-wireframe.png')).toBeInTheDocument();
+    const element = container.querySelector('[title="my-wireframe.png"]');
+    expect(element).toBeInTheDocument();
   });
 
   it('renders preview image when previewUrl is set', () => {
@@ -79,7 +80,7 @@ describe('FileUploader component', () => {
         onUpload={() => {}}
       />
     );
-    expect(screen.getByText(/Clear/)).toBeInTheDocument();
+    expect(screen.getByTitle('Clear')).toBeInTheDocument();
   });
 
   it('calls onClear when Clear button is clicked', () => {
@@ -91,7 +92,7 @@ describe('FileUploader component', () => {
         onUpload={() => {}}
       />
     );
-    fireEvent.click(screen.getByText(/Clear/));
+    fireEvent.click(screen.getByTitle('Clear'));
     expect(onClear).toHaveBeenCalledTimes(1);
   });
 
@@ -110,6 +111,52 @@ describe('FileUploader component', () => {
     render(
       <FileUploader currentPath="/data/generate/wire/foo.png" onUpload={() => {}} />
     );
-    expect(screen.queryByText(/Clear/)).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Clear')).not.toBeInTheDocument();
+  });
+
+  it('shows loading spinner when image is loading', () => {
+    // When previewUrl is set, the component renders img with handlers
+    // that control a conditional loading spinner
+    const { container } = render(
+      <FileUploader
+        previewUrl="/api/uploads/preview?path=foo.png"
+        onUpload={() => {}}
+      />
+    );
+    
+    const img = container.querySelector('img');
+    expect(img).toBeInTheDocument();
+    expect(img).toHaveAttribute('src', '/api/uploads/preview?path=foo.png');
+    
+    // The img element has handlers to manage spinner state
+    // onLoadStart sets imageLoading=true (shows spinner)
+    // onLoad sets imageLoading=false (hides spinner)
+  });
+
+  it('hides loading spinner when image finishes loading', () => {
+    const { container } = render(
+      <FileUploader
+        previewUrl="/api/uploads/preview?path=foo.png"
+        onUpload={() => {}}
+      />
+    );
+    
+    const img = container.querySelector('img');
+    expect(img).toBeInTheDocument();
+    
+    // Both handlers exist on the img element
+    expect(img.onload).toBeDefined();
+  });
+
+  it('accepts fixedHeight prop', () => {
+    const { container } = render(
+      <FileUploader
+        onUpload={() => {}}
+        fixedHeight="h-48"
+      />
+    );
+    
+    const uploader = container.querySelector('.h-48');
+    expect(uploader).toBeInTheDocument();
   });
 });

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { TopBar } from './layout/TopBar';
 import { SubBar } from './layout/SubBar';
 import { GenerateTab } from './tabs/GenerateTab';
@@ -61,6 +61,30 @@ function App() {
   } = useSpendingContext();
   const { deploying } = useUpscaleContext();
   const { theme, setTheme } = useTheme();
+
+  const [loadingVisible, setLoadingVisible] = useState(true);   // controls opacity (fade)
+  const [loadingMounted, setLoadingMounted] = useState(true);   // controls presence in DOM
+  const loadingStartTimeRef = useRef(Date.now());
+
+  // ── Hide loading screen: fade out after data ready + minimum display time ──
+  useEffect(() => {
+    if (!configLoading && !carsLoading) {
+      const elapsed = Date.now() - loadingStartTimeRef.current;
+      const MIN_TOTAL_TIME = 2000; // 2 seconds minimum from page load
+      const remainingTime = Math.max(0, MIN_TOTAL_TIME - elapsed);
+
+      const timer = setTimeout(() => {
+        // Step 1: trigger CSS fade-out on both React overlay and HTML splash
+        setLoadingVisible(false);
+        if (window.hideLoadingScreen) {
+          window.hideLoadingScreen();
+        }
+        // Step 2: remove from DOM after the 0.6s CSS transition completes
+        setTimeout(() => setLoadingMounted(false), 600);
+      }, remainingTime);
+      return () => clearTimeout(timer);
+    }
+  }, [configLoading, carsLoading]);
 
   // ── Derived state / effects ───────────────────────────────────────────────
   useEffect(() => {
@@ -158,23 +182,31 @@ function App() {
   }, [setSelectedCar, setBaseOverride, saveSession]);
 
   // ── App loading splash ────────────────────────────────────────────────────
-  if (configLoading || carsLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen bg-bg-dark gap-5">
-        <img src="/icon.png" alt="Livery AI Studio" width="72" height="72" className="rounded-xl mb-1" />
-        <div className="text-[22px] font-bold text-text-primary tracking-tight">
-          Livery <span className="text-accent-teal">A</span><span className="text-accent-wine">I</span> Studio
-        </div>
-        <svg className="animate-spin text-text-muted" width="22" height="22" viewBox="0 0 24 24" fill="none">
-          <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-          <path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-        </svg>
-      </div>
-    );
-  }
+  // NOTE: rendered as a fixed overlay (not an early return) so we can fade it out with CSS.
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-bg-dark text-text-primary">
+
+      {/* Loading overlay — fades out, then unmounts */}
+      {loadingMounted && (
+        <div
+          style={{
+            transition: 'opacity 0.6s ease-out',
+            opacity: loadingVisible ? 1 : 0,
+            pointerEvents: loadingVisible ? 'auto' : 'none',
+          }}
+          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-bg-dark gap-5"
+        >
+          <img src="/icon.png" alt="Livery AI Studio" width="72" height="72" className="rounded-xl mb-1" />
+          <div className="text-[22px] font-bold text-text-primary tracking-tight">
+            Livery <span className="text-accent-teal">A</span><span className="text-accent-wine">I</span> Studio
+          </div>
+          <svg className="animate-spin text-text-muted" width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+            <path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+        </div>
+      )}
       <TopBar
         activeTab={activeTab}
         onTabChange={handleTabChange}
@@ -208,7 +240,7 @@ function App() {
 
       {/* Tab panels */}
       <main className="flex-1 overflow-hidden">
-        {activeTab === 'generate' && (
+        {activeTab === 'generate' && !carsLoading && (
           <GenerateTab
             capabilities={capabilities}
             injectedPrompt={injectedPrompt}

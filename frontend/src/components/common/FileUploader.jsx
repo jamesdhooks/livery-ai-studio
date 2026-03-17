@@ -15,9 +15,12 @@ export function FileUploader({
   disabled = false,
   onHoverPreview,
   onHoverPreviewEnd,
+  fixedHeight = null, // e.g., 'h-48' for fixed height, or null for min-height
 }) {
   const inputRef = useRef(null);
   const [dragOver, setDragOver] = useState(false);
+  const [imageLoading, setImageLoading] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
 
   const handleFile = (file) => {
     if (!file || disabled) return;
@@ -35,6 +38,10 @@ export function FileUploader({
     const file = e.target.files[0];
     if (file) handleFile(file);
     e.target.value = '';
+  };
+
+  const handleImageLoad = () => {
+    setImageLoading(false);
   };
 
   const filename = currentPath ? getFilename(currentPath) : '';
@@ -62,7 +69,7 @@ export function FileUploader({
         className={`
           relative flex flex-col items-center justify-center
           border rounded cursor-pointer transition-all duration-150
-          min-h-[80px] p-2 text-center
+          ${fixedHeight || 'min-h-[80px]'} p-2 text-center
           ${dragOver
             ? 'border-accent bg-accent/10'
             : currentPath
@@ -71,27 +78,47 @@ export function FileUploader({
           }
           ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
         `}
+        title={filename || ''}
         onClick={() => !disabled && inputRef.current?.click()}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
-        onMouseEnter={() => previewUrl && onHoverPreview?.(previewUrl)}
-        onMouseLeave={() => onHoverPreviewEnd?.()}
+        onMouseEnter={() => { setIsHovering(true); previewUrl && onHoverPreview?.(previewUrl); }}
+        onMouseLeave={() => { setIsHovering(false); onHoverPreviewEnd?.(); }}
       >
         {previewUrl ? (
-          <img
-            src={previewUrl}
-            alt={label}
-            className="max-h-16 max-w-full object-contain rounded"
-          />
+          <>
+            {/* Loading spinner */}
+            {imageLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-bg-dark/40 rounded">
+                <div className="w-6 h-6 border-2 border-border-default border-t-accent rounded-full animate-spin" />
+              </div>
+            )}
+            {/* Image fills the container */}
+            <img
+              src={previewUrl}
+              alt={label}
+              className="w-full h-full object-contain rounded"
+              onLoad={handleImageLoad}
+              onLoadStart={() => setImageLoading(true)}
+            />
+          </>
         ) : (
           <div className="text-text-muted text-xs">{placeholder}</div>
         )}
         
-        {filename && (
-          <div className="mt-1 text-[10px] text-text-secondary truncate max-w-full px-1">
-            {filename}
-          </div>
+        {/* Clear button — hover X in top right */}
+        {currentPath && onClear && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onClear(); }}
+            className={`absolute top-1 right-1 w-6 h-6 bg-error/80 hover:bg-error text-white rounded-sm flex items-center justify-center transition-opacity duration-150 z-10 ${isHovering ? 'opacity-100' : 'opacity-0'}`}
+            disabled={disabled}
+            title="Clear"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
         )}
         
         <input
@@ -103,16 +130,6 @@ export function FileUploader({
           disabled={disabled}
         />
       </div>
-      
-      {currentPath && onClear && (
-        <button
-          onClick={(e) => { e.stopPropagation(); onClear(); }}
-          className="text-[10px] text-error hover:text-red-400 transition-colors text-left"
-          disabled={disabled}
-        >
-          ✕ Clear
-        </button>
-      )}
     </div>
   );
 }

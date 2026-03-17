@@ -25,7 +25,7 @@ title Livery Gen AI
 
 set "APP_DIR=%~dp0"
 set "VENV_DIR=%APP_DIR%.venv"
-set "PORT=5199"
+set "PORT=6173"
 set "INSTALL_GPU=0"
 set "CUDA_VER=12"
 set "SKIP_INSTALL=0"
@@ -98,6 +98,9 @@ if not exist "%VENV_DIR%" (
 call "%VENV_DIR%\Scripts\activate.bat"
 echo  + Virtual environment activated
 
+:: ── Frontend build first (takes priority over SKIP_INSTALL) ────────────────────
+if "%BUILD_FRONTEND%"=="1" goto do_build_frontend
+
 :: ── Install dependencies ──────────────────────────────────────────────────────
 if "%SKIP_INSTALL%"=="1" goto launch
 
@@ -159,67 +162,72 @@ echo  Patching basicsr for torchvision compatibility...
 
 :post_gpu
 
-:: ── Frontend build/dev (optional — only needed after editing frontend/ sources) ──
-if "%AUTO_LOAD%"=="1" (
-    echo.
-    echo  Starting frontend dev server with HMR...
-    where node >nul 2>&1
-    if %errorlevel% neq 0 (
-        echo  [ERROR] Node.js not found. Install from https://nodejs.org
-        pause
-        exit /b 1
-    )
-    if not exist "%APP_DIR%frontend\node_modules" (
-        echo  Installing frontend dependencies...
-        cd /d "%APP_DIR%frontend"
-        call npm install
-        if %errorlevel% neq 0 (
-            echo  [ERROR] npm install failed.
-            pause
-            exit /b 1
-        )
-    )
-    cd /d "%APP_DIR%frontend"
-    echo  + Frontend dev server starting (HMR enabled)
-    echo.
-    REM Start Flask in background, then Vite dev server in foreground
-    start "Livery AI Studio - Flask Backend" /B "%VENV_DIR%\Scripts\python.exe" "%APP_DIR%app.py"
-    timeout /t 2 /nobreak >nul
-    echo  + Flask backend started, opening http://localhost:5173...
-    call npm run dev
-    exit /b 0
-) else if "%BUILD_FRONTEND%"=="1" (
-    echo.
-    echo  Building React frontend...
-    where node >nul 2>&1
-    if %errorlevel% neq 0 (
-        echo  [ERROR] Node.js not found. Install from https://nodejs.org
-        pause
-        exit /b 1
-    )
-    if not exist "%APP_DIR%frontend\node_modules" (
-        echo  Installing frontend dependencies...
-        cd /d "%APP_DIR%frontend"
-        call npm install
-        if %errorlevel% neq 0 (
-            echo  [ERROR] npm install failed.
-            pause
-            exit /b 1
-        )
-    )
-    cd /d "%APP_DIR%frontend"
-    call npm run build
-    if %errorlevel% neq 0 (
-        echo  [ERROR] Frontend build failed.
-        pause
-        exit /b 1
-    )
-    cd /d "%APP_DIR%"
-    echo  + Frontend built successfully
-) else (
-    echo  + Using pre-built frontend from static/
-    echo    (Run with --build-frontend to rebuild after editing frontend/ sources)
+:: ── Frontend dev / launch ────────────────────────────────────────────────────────
+if /i "%AUTO_LOAD%"=="1" goto do_auto_load
+echo  + Using pre-built frontend from static/
+echo    (Run with --build-frontend to rebuild after editing frontend/ sources)
+goto launch
+
+:do_auto_load
+echo.
+echo  Starting frontend dev server with HMR...
+where node >nul 2>&1
+if %errorlevel% neq 0 (
+    echo  [ERROR] Node.js not found. Install from https://nodejs.org
+    pause
+    exit /b 1
 )
+if not exist "%APP_DIR%frontend\node_modules" (
+    echo  Installing frontend dependencies...
+    cd /d "%APP_DIR%frontend"
+    call npm install
+    if %errorlevel% neq 0 (
+        echo  [ERROR] npm install failed.
+        pause
+        exit /b 1
+    )
+)
+cd /d "%APP_DIR%frontend"
+echo  + Frontend dev server starting (HMR enabled)
+echo.
+REM Start Flask in background, then Vite dev server in foreground
+start "Livery AI Studio - Flask Backend" /B "%VENV_DIR%\Scripts\python.exe" "%APP_DIR%app.py"
+ping -n 3 127.0.0.1 >nul 2>&1
+echo  + Flask backend started on port 6173
+echo  + Press CTRL+C to stop both servers
+call npm run dev
+REM Kill Flask process when npm dev exits (user pressed Ctrl+C)
+taskkill /FI "WINDOWTITLE eq Livery AI Studio - Flask Backend" /T /F >nul 2>&1
+exit /b 0
+
+:do_build_frontend
+echo.
+echo  Building React frontend...
+where node >nul 2>&1
+if %errorlevel% neq 0 (
+    echo  [ERROR] Node.js not found. Install from https://nodejs.org
+    pause
+    exit /b 1
+)
+if not exist "%APP_DIR%frontend\node_modules" (
+    echo  Installing frontend dependencies...
+    cd /d "%APP_DIR%frontend"
+    call npm install
+    if %errorlevel% neq 0 (
+        echo  [ERROR] npm install failed.
+        pause
+        exit /b 1
+    )
+)
+cd /d "%APP_DIR%frontend"
+call npm run build
+if %errorlevel% neq 0 (
+    echo  [ERROR] Frontend build failed.
+    pause
+    exit /b 1
+)
+cd /d "%APP_DIR%"
+echo  + Frontend built successfully
 
 :: ── Launch ────────────────────────────────────────────────────────────────────
 :launch
