@@ -7,6 +7,7 @@ server/routes/api_history.py
 /api/deploy          — copy TGA to iRacing paint folder
 /api/clear-paint     — remove car_<id>.tga from iRacing
 /api/upscale         — Real-ESRGAN upscale
+/api/resample        — SeedVR2 diffusion resample
 /api/preview         — base64 PNG preview of a TGA
 /api/preview-jpg     — base64 of an existing preview JPG
 /api/image-data      — full-resolution base64 PNG
@@ -331,6 +332,61 @@ def api_upscale():
             "output_path":  str(out_path),
             "preview_b64":  base64.b64encode(buf.getvalue()).decode(),
             "size":         list(upscaled.size),
+        })
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
+# ── SeedVR2 Resample ─────────────────────────────────────────────────────────
+
+@bp.route("/api/resample", methods=["POST"])
+def api_resample():
+    """Resample a livery using SeedVR2 (downres → diffusion upscale → 2048×2048)."""
+    from PIL import Image
+
+    data        = request.json or {}
+    source_path = data.get("path", "").strip()
+
+    if not source_path or not Path(source_path).exists():
+        return jsonify({"error": "Source file not found"}), 404
+
+    try:
+        from server.seedvr2 import resample as seedvr2_resample, is_available as seedvr2_available
+        if not seedvr2_available():
+            return jsonify({"error": "SeedVR2 is not available. Run start.bat --seedvr to install."}), 400
+
+        print(f"[resample] Loading {source_path}")
+        resampled = seedvr2_resample(Image.open(source_path))
+
+        src      = Path(source_path)
+        out_name = src.stem + "_resampled.tga"
+        out_path = src.parent / out_name
+        resampled.save(str(out_path), format="TGA")
+        print(f"[resample] Saved → {out_path}")
+
+        # Update sidecar
+        try:
+            original_stem = src.stem.replace("_resampled", "").replace("_upscaled", "")
+            sidecar_path  = src.parent / (original_stem + ".json")
+            if sidecar_path.exists():
+                meta = json.loads(sidecar_path.read_text(encoding="utf-8"))
+                meta["resampled"]      = True
+                meta["resampled_path"] = str(out_path)
+                sidecar_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
+        except Exception as sc_err:
+            print(f"[resample] Warning: couldn't update sidecar: {sc_err}")
+
+        preview = resampled.copy().convert("RGBA")
+        preview.thumbnail((512, 512))
+        buf = io.BytesIO()
+        preview.save(buf, format="PNG")
+
+        return jsonify({
+            "status":       "ok",
+            "output_path":  str(out_path),
+            "preview_b64":  base64.b64encode(buf.getvalue()).decode(),
+            "size":         list(resampled.size),
         })
     except Exception as e:
         import traceback; traceback.print_exc()

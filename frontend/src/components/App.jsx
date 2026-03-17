@@ -35,7 +35,7 @@ function App() {
     }
   });
   const [spendFilter, setSpendFilter] = useState('overall');
-  const [capabilities, setCapabilities] = useState({ upscale_available: false });
+  const [capabilities, setCapabilities] = useState({ upscale_available: false, seedvr_available: false });
 
   // Modals
   const [showSamplePrompts, setShowSamplePrompts] = useState(false);
@@ -89,7 +89,10 @@ function App() {
   // ── Derived state / effects ───────────────────────────────────────────────
   useEffect(() => {
     if (config) {
-      setCapabilities({ upscale_available: config.upscale_available || false });
+      setCapabilities({
+        upscale_available: config.upscale_available || false,
+        seedvr_available: config.seedvr_available || false,
+      });
     }
   }, [config]);
 
@@ -280,7 +283,7 @@ function App() {
           />
         )}
         {activeTab === 'settings' && (
-          <SettingsTab />
+          <SettingsTab capabilities={capabilities} />
         )}
         {activeTab === 'getting-started' && <GettingStartedTab />}
       </main>

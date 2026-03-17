@@ -64,6 +64,7 @@ The app runs as a native desktop window (Flask + pywebview). Fill in the form, c
 - **Auto Preview** — auto-copies the TGA to iRacing for instant in-game preview
 - **History Browser** — browse, reload, iterate on, and upscale past liveries
 - **GPU Upscaling** *(optional)* — Real-ESRGAN 4× upscale for crisp 2048×2048 textures
+- **SeedVR2 Resample** *(optional)* — diffusion-based AI upscaling for even higher fidelity results
 
 ---
 
@@ -77,8 +78,9 @@ The app runs as a native desktop window (Flask + pywebview). Fill in the form, c
 | **iRacing** | Installed with at least one car |
 | **Trading Paints** | Installed from [tradingpaints.com/install](https://www.tradingpaints.com/install) for livery loading |
 | **GPU Upscaling** *(optional)* | NVIDIA GPU (6+ GB VRAM) — install with `start.bat --gpu` |
+| **SeedVR2 Resample** *(optional)* | NVIDIA GPU (8+ GB VRAM recommended) — install with `start.bat --seedvr` |
 
-> Without an NVIDIA GPU, upscaling is disabled in the UI. Generated textures are still resized to 2048×2048 via Lanczos resampling — works fine, just less sharp than Real-ESRGAN.
+> Without an NVIDIA GPU, upscaling and resampling are disabled in the UI. Generated textures are still resized to 2048×2048 via Lanczos resampling — works fine, just less sharp than Real-ESRGAN or SeedVR2.
 
 ---
 
@@ -149,6 +151,8 @@ r. **Make tweaks** using the "Modify" function in the generate tab, make targete
 | `--gpu --cuda 11` | CUDA 11.8 for RTX 30xx |
 | `--gpu --cuda 12` | CUDA 12.4 for RTX 40xx / 50xx |
 | `--gpu --cuda 50` | CUDA 12.8 nightly for RTX 50xx / Blackwell |
+| `--seedvr` | Install SeedVR2 diffusion upscaler (NVIDIA required, Git required) |
+| `--gpu --seedvr` | Install both Real-ESRGAN and SeedVR2 |
 | `--port 8080` | Use a custom port (default: 5199) |
 | `--skip-install` | Skip `pip install` for faster restart |
 | `--build-frontend` | Rebuild the React UI (requires Node.js) |
@@ -156,6 +160,8 @@ r. **Make tweaks** using the "Modify" function in the generate tab, make targete
 | `--auto-load` | **Dev mode:** HMR + hot reload (implies `--web-only`, requires Node.js) |
 
 **GPU setup:** `start.bat --gpu` installs PyTorch + Real-ESRGAN, downloads model weights (~67 MB), and patches a known torchvision compatibility issue automatically.
+
+**SeedVR2 setup:** `start.bat --seedvr` clones the SeedVR2 repository and installs its dependencies. SeedVR2 uses diffusion-based upscaling that produces significantly higher quality results than Real-ESRGAN, especially on AI-generated liveries. It takes longer (2–5 minutes per image vs ~30 seconds) but the quality improvement is substantial. Requires Git and an NVIDIA GPU with 8+ GB VRAM. Use `--gpu --seedvr` to install both engines. You can set your preferred engine in Settings or switch between them on the Upscale tab.
 
 **Frontend development:** `start.bat --auto-load` starts the Vite dev server with hot module reload. The Flask backend and frontend dev server run simultaneously on ports 5000 and 5173 respectively. Edit frontend files and see changes instantly without rebuilding.
 

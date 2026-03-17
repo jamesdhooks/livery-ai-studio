@@ -52,6 +52,8 @@ DEFAULT_CONFIG: dict = {
     "car_overrides": {},
     # Starred/favourite cars list
     "starred_cars": [],
+    # Upscale engine preference: "realesrgan" (default) or "seedvr2"
+    "upscale_engine": "realesrgan",
 }
 
 

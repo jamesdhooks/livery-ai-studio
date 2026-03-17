@@ -20,7 +20,7 @@ export function UpscaleProvider({ children }) {
 
 /**
  * useUpscaleContext — returns the full useUpscale interface:
- *   { upscaling, deploying, result, error, status, upscale, deploy, clearStatus }
+ *   { upscaling, resampling, deploying, result, error, status, upscale, resample, deploy, clearStatus }
  */
 export function useUpscaleContext() {
   const ctx = useContext(UpscaleContext);

@@ -57,6 +57,14 @@ def get_config():
         print(f"[app] upscale check failed: {e}")
         masked["upscale_available"] = False
 
+    print("[app] Checking SeedVR2 availability…")
+    try:
+        from server.seedvr2 import is_available as _seedvr_available
+        masked["seedvr_available"] = _seedvr_available()
+    except Exception as e:
+        print(f"[app] seedvr2 check failed: {e}")
+        masked["seedvr_available"] = False
+
     return jsonify(masked)
 
 
@@ -89,7 +97,15 @@ def get_session():
         "sponsors_wireframe_path": config.get("sponsors_wireframe_path", ""),
         "sponsors_reference_path": config.get("sponsors_reference_path", ""),
         "upscale_preference": config.get("upscale_preference", False),
-    })
+        "upscale_engine": config.get("upscale_engine", "realesrgan"),
+        # Legacy flat keys — kept so older clients and migration paths still work
+        "last_prompt": config.get("last_prompt", ""),
+        "last_context": config.get("last_context", ""),
+        "reference_image_paths": config.get("reference_image_paths", []),
+        "reference_context": config.get("reference_context", ""),
+    }
+    print(f"[SESSION_GET] Response has modeState key: {'modeState' in response}", flush=True)
+    return jsonify(response)
 
 
 @bp.route("/api/session", methods=["POST"])
@@ -104,6 +120,7 @@ def save_session():
         "last_mode", "last_car", "last_model", "last_is_2k", "last_auto_enhance",
         "wireframe_path", "base_texture_path", "sponsors_base_path",
         "sponsors_wireframe_path", "sponsors_reference_path", "upscale_preference",
+        "upscale_engine",
     ]
     for field in session_fields:
         if field in data:

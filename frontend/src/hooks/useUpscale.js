@@ -2,25 +2,29 @@ import { useState, useCallback } from 'react';
 import upscaleService from '../services/UpscaleService';
 
 /**
- * useUpscale — orchestrates GPU upscaling and iRacing deployment.
+ * useUpscale — orchestrates GPU upscaling, SeedVR2 resampling, and iRacing deployment.
  *
- * Calls `UpscaleService.upscale()` (Real-ESRGAN 4×) and
+ * Calls `UpscaleService.upscale()` (Real-ESRGAN 4×),
+ * `UpscaleService.resample()` (SeedVR2 diffusion), and
  * `UpscaleService.deploy()` (copy TGA to iRacing paint folder).
  * Duplicate calls while an operation is in progress are silently ignored.
  *
  * @returns {{
  *   upscaling: boolean,
+ *   resampling: boolean,
  *   deploying: boolean,
  *   result: Object|null,
  *   error: string|null,
  *   status: {type: 'info'|'success'|'error', message: string}|null,
  *   upscale: (sourcePath: string) => Promise<Object|null>,
+ *   resample: (sourcePath: string) => Promise<Object|null>,
  *   deploy: (liveryPath: string, carName: string, customerId: string) => Promise<boolean>,
  *   clearStatus: () => void,
  * }}
  */
 export function useUpscale({ onNotify } = {}) {
   const [upscaling, setUpscaling] = useState(false);
+  const [resampling, setResampling] = useState(false);
   const [deploying, setDeploying] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -47,6 +51,7 @@ export function useUpscale({ onNotify } = {}) {
 
     try {
       const data = await upscaleService.upscale(sourcePath);
+      if (data.preview_b64) data.preview_url = `data:image/png;base64,${data.preview_b64}`;
       setResult(data);
       notify('success', 'Upscale complete!');
       return data;
@@ -58,6 +63,30 @@ export function useUpscale({ onNotify } = {}) {
       setUpscaling(false);
     }
   }, [upscaling, notify]);
+
+  const resample = useCallback(async (sourcePath) => {
+    if (resampling) return null;
+
+    setResampling(true);
+    setError(null);
+    setStatus({ type: 'info', message: 'Resampling with SeedVR2 (this may take 2-5 minutes)…' });
+
+    notify('info', 'Resampling with SeedVR2 (this may take 2-5 minutes)…');
+
+    try {
+      const data = await upscaleService.resample(sourcePath);
+      if (data.preview_b64) data.preview_url = `data:image/png;base64,${data.preview_b64}`;
+      setResult(data);
+      notify('success', 'SeedVR2 resample complete!');
+      return data;
+    } catch (e) {
+      setError(e.message);
+      notify('error', `Resample failed: ${e.message}`);
+      return null;
+    } finally {
+      setResampling(false);
+    }
+  }, [resampling, notify]);
 
   const deploy = useCallback(async (liveryPath, carName, customerId) => {
     if (deploying) return false;
@@ -84,11 +113,13 @@ export function useUpscale({ onNotify } = {}) {
 
   return {
     upscaling,
+    resampling,
     deploying,
     result,
     error,
     status,
     upscale,
+    resample,
     deploy,
     clearStatus,
   };

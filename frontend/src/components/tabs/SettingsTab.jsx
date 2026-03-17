@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '../common/Button';
+import { Toggle } from '../common/Toggle';
 import { WipeDataModal } from '../modals/WipeDataModal';
 import upscaleService from '../../services/UpscaleService';
 import { useToastContext } from '../../context/ToastContext';
 import { useConfigContext } from '../../context/ConfigContext';
 
-export function SettingsTab() {
+export function SettingsTab({ capabilities }) {
   const { toast } = useToastContext();
   const { config, loading, saveConfig: onSaveConfig } = useConfigContext();
   const [apiKey, setApiKey] = useState('');
@@ -15,6 +16,7 @@ export function SettingsTab() {
   const [priceFlash2k, setPriceFlash2k] = useState('');
   const [pricePro, setPricePro] = useState('');
   const [dataDir, setDataDir] = useState('');
+  const [upscaleEngine, setUpscaleEngine] = useState('realesrgan');
   const [showWipeModal, setShowWipeModal] = useState(false);
 
   useEffect(() => {
@@ -28,6 +30,7 @@ export function SettingsTab() {
     setPriceFlash2k(String(config.price_flash_2k ?? 0.101));
     setPricePro(String(config.price_pro ?? 0.134));
     setDataDir(config.data_dir || '');
+    setUpscaleEngine(config.upscale_engine || 'realesrgan');
   }, [config]);
 
   const handleApiKeyFocus = () => {
@@ -44,6 +47,7 @@ export function SettingsTab() {
       price_flash_2k: parseFloat(priceFlash2k) || 0.101,
       price_pro: parseFloat(pricePro) || 0.134,
       data_dir: dataDir,
+      upscale_engine: upscaleEngine,
     };
     if (!apiKeyMasked && apiKey) {
       updates.gemini_api_key = apiKey;
@@ -168,6 +172,36 @@ export function SettingsTab() {
           )}
         </div>
       </div>
+
+      {/* Upscale Engine preference — only show when SeedVR2 is available */}
+      {capabilities?.seedvr_available && (
+        <div className="flex flex-col gap-2 p-3 bg-bg-card rounded border border-border-default">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
+            Upscale Engine
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[13px] text-text-primary">
+                {upscaleEngine === 'seedvr2' ? 'SeedVR2 (Diffusion)' : 'Real-ESRGAN (Traditional)'}
+              </span>
+              <span className="text-[11px] text-text-muted">
+                {upscaleEngine === 'seedvr2'
+                  ? 'Higher quality, slower (2-5 min). Best for AI-generated liveries.'
+                  : 'Fast 4× upscale (~30s). Uses Real-ESRGAN neural network.'}
+              </span>
+            </div>
+            <Toggle
+              checked={upscaleEngine === 'seedvr2'}
+              onChange={(v) => setUpscaleEngine(v ? 'seedvr2' : 'realesrgan')}
+              size="sm"
+            />
+          </div>
+          <p className="text-[11px] text-text-muted">
+            When enabled, auto-upscale in the Generate tab will use SeedVR2 instead of Real-ESRGAN.
+            You can always use either engine directly from the Upscale tab.
+          </p>
+        </div>
+      )}
 
       <Button variant="primary" size="md" onClick={handleSave} loading={loading}>
         {loading ? 'Loading Settings…' : 'Save Settings'}

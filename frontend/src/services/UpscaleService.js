@@ -1,13 +1,14 @@
 import { BaseService } from './BaseService';
 
 /**
- * UpscaleService — GPU upscaling and iRacing deployment.
+ * UpscaleService — GPU upscaling, SeedVR2 resampling, and iRacing deployment.
  *
- * Wraps two backend operations:
- * - `/api/upscale` — runs Real-ESRGAN 4× on an existing livery TGA.
- * - `/api/deploy` — copies a TGA into the iRacing paint folder.
+ * Wraps three backend operations:
+ * - `/api/upscale`   — runs Real-ESRGAN 4× on an existing livery TGA.
+ * - `/api/resample`  — runs SeedVR2 diffusion resample (downres → upscale).
+ * - `/api/deploy`    — copies a TGA into the iRacing paint folder.
  *
- * Both operations are compute/IO-heavy; callers should show a progress
+ * Both upscale operations are compute/IO-heavy; callers should show a progress
  * indicator while the requests are in flight.
  */
 class UpscaleService extends BaseService {
@@ -21,7 +22,16 @@ class UpscaleService extends BaseService {
    * @returns {Promise<{output_path: string}>} Path to the upscaled output file.
    */
   async upscale(sourcePath) {
-    return this.post('/upscale', { source_path: sourcePath });
+    return this.post('/upscale', { path: sourcePath });
+  }
+
+  /**
+   * Resample a livery using SeedVR2 (downres to 1024 → diffusion upscale to 2048).
+   * @param {string} sourcePath - Server-side path to the source TGA/PNG.
+   * @returns {Promise<{output_path: string, preview_b64: string, size: number[]}>}
+   */
+  async resample(sourcePath) {
+    return this.post('/resample', { path: sourcePath });
   }
 
   /**

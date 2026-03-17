@@ -10,13 +10,15 @@ setlocal EnableDelayedExpansion
 ::   start.bat --gpu --cuda 11       CUDA 11.x (RTX 30xx)
 ::   start.bat --gpu --cuda 12       CUDA 12.x (RTX 40xx, default)
 ::   start.bat --gpu --cuda 50       CUDA 12.8 nightly (RTX 50xx / Blackwell)
+::   start.bat --seedvr              Install SeedVR2 diffusion upscaler
+::   start.bat --gpu --seedvr        Install both Real-ESRGAN and SeedVR2
 ::   start.bat --port 8080           Use a custom port
 ::   start.bat --skip-install        Skip pip install (faster restart)
 ::   start.bat --build-frontend      Rebuild the React frontend (requires Node.js)
 ::   start.bat --web-only            Launch in browser instead of pywebview window
 ::   start.bat --auto-load           Dev mode: HMR + hot reload (implies --web-only)
 ::
-:: NOTE: The pre-built frontend is included in static/ — Node.js is NOT
+:: NOTE: The pre-built frontend is included in static/ � Node.js is NOT
 :: required to run the app. Use --build-frontend only if you have modified
 :: files in the frontend/ source directory.
 :: ========================================================================
@@ -28,6 +30,7 @@ set "VENV_DIR=%APP_DIR%.venv"
 set "PORT=6173"
 set "INSTALL_GPU=0"
 set "CUDA_VER=12"
+set "INSTALL_SEEDVR=0"
 set "SKIP_INSTALL=0"
 set "BUILD_FRONTEND=0"
 set "WEB_ONLY=0"
@@ -37,6 +40,7 @@ set "AUTO_LOAD=0"
 :parse_args
 if "%~1"=="" goto done_args
 if /i "%~1"=="--gpu"             ( set "INSTALL_GPU=1"    & shift & goto parse_args )
+if /i "%~1"=="--seedvr"          ( set "INSTALL_SEEDVR=1" & shift & goto parse_args )
 if /i "%~1"=="--skip-install"    ( set "SKIP_INSTALL=1"   & shift & goto parse_args )
 if /i "%~1"=="--build-frontend"  ( set "BUILD_FRONTEND=1" & shift & goto parse_args )
 if /i "%~1"=="--web-only"        ( set "WEB_ONLY=1"       & shift & goto parse_args )
@@ -52,7 +56,7 @@ echo   Livery AI Studio
 echo  ======================================
 echo.
 
-:: ── Find Python 3.10+ ────────────────────────────────────────────────────────
+:: ?? Find Python 3.10+ ????????????????????????????????????????????????????????
 set "PY_CMD="
 py -3.14 --version >nul 2>&1
 if %errorlevel%==0 set "PY_CMD=py -3.14"
@@ -81,7 +85,7 @@ if "%PY_CMD%"=="" (
 )
 echo  Python found: %PY_CMD%
 
-:: ── Recreate venv ────────────────────────────────────────────────────────────
+:: ?? Recreate venv ????????????????????????????????????????????????????????????
 if not exist "%VENV_DIR%" (
     echo  Creating virtual environment...
     %PY_CMD% -m venv "%VENV_DIR%"
@@ -98,10 +102,10 @@ if not exist "%VENV_DIR%" (
 call "%VENV_DIR%\Scripts\activate.bat"
 echo  + Virtual environment activated
 
-:: ── Frontend build first (takes priority over SKIP_INSTALL) ────────────────────
+:: ?? Frontend build first (takes priority over SKIP_INSTALL) ????????????????????
 if "%BUILD_FRONTEND%"=="1" goto do_build_frontend
 
-:: ── Install dependencies ──────────────────────────────────────────────────────
+:: ?? Install dependencies ??????????????????????????????????????????????????????
 if "%SKIP_INSTALL%"=="1" goto launch
 
 echo.
@@ -162,7 +166,55 @@ echo  Patching basicsr for torchvision compatibility...
 
 :post_gpu
 
-:: ── Frontend dev / launch ────────────────────────────────────────────────────────
+:: ── SeedVR2 installation (optional — diffusion-based resample/upscale) ───────
+if "%INSTALL_SEEDVR%"=="1" (
+    echo.
+    echo  Installing SeedVR2 diffusion upscaler...
+
+    :: Ensure torch is installed (SeedVR2 needs it even without Real-ESRGAN)
+    "%VENV_DIR%\Scripts\python.exe" -c "import torch" >nul 2>&1
+    if %errorlevel% neq 0 (
+        echo  [INFO] torch not found — installing CUDA 12.4 PyTorch for SeedVR2...
+        if "!CUDA_VER!"=="11" (
+            "%VENV_DIR%\Scripts\pip.exe" install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+        ) else if "!CUDA_VER!"=="50" (
+            "%VENV_DIR%\Scripts\pip.exe" install --pre torch torchvision --index-url https://download.pytorch.org/whl/nightly/cu128
+        ) else (
+            "%VENV_DIR%\Scripts\pip.exe" install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+        )
+    )
+
+    :: Clone the SeedVR2 repo if not already present
+    if not exist "%APP_DIR%seedvr2_videoupscaler" (
+        echo  Cloning SeedVR2 repository...
+        where git >nul 2>&1
+        if %errorlevel% neq 0 (
+            echo  [ERROR] Git not found. Install Git from https://git-scm.com
+            echo  SeedVR2 requires Git to clone the repository.
+            goto post_seedvr
+        )
+        cd /d "%APP_DIR%"
+        git clone https://github.com/kijai/ComfyUI-SeedVR2_VideoUpscaler.git seedvr2_videoupscaler
+        if %errorlevel% neq 0 (
+            echo  [ERROR] Failed to clone SeedVR2 repository.
+            goto post_seedvr
+        )
+        echo  + SeedVR2 repository cloned
+    ) else (
+        echo  + SeedVR2 repository already exists
+    )
+
+    :: Install SeedVR2 requirements
+    if exist "%APP_DIR%seedvr2_videoupscaler\requirements.txt" (
+        echo  Installing SeedVR2 dependencies...
+        "%VENV_DIR%\Scripts\pip.exe" install -r "%APP_DIR%seedvr2_videoupscaler\requirements.txt"
+        echo  + SeedVR2 dependencies installed
+    )
+    echo  + SeedVR2 installation complete
+
+:post_seedvr
+
+:: ?? Frontend dev / launch ????????????????????????????????????????????????????????
 if /i "%AUTO_LOAD%"=="1" goto do_auto_load
 echo  + Using pre-built frontend from static/
 echo    (Run with --build-frontend to rebuild after editing frontend/ sources)
@@ -229,7 +281,7 @@ if %errorlevel% neq 0 (
 cd /d "%APP_DIR%"
 echo  + Frontend built successfully
 
-:: ── Launch ────────────────────────────────────────────────────────────────────
+:: ?? Launch ????????????????????????????????????????????????????????????????????
 :launch
 echo.
 echo  ======================================

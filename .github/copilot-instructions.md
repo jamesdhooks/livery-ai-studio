@@ -14,6 +14,7 @@ Livery AI Studio is a desktop application (Flask + pywebview) that uses Google's
 | Testing | Vitest + React Testing Library |
 | AI | Google Gemini API (gemini-3-pro / gemini-3.1-flash) |
 | GPU Upscaling | Real-ESRGAN (optional, NVIDIA GPU) |
+| AI Resampling | SeedVR2 (optional, NVIDIA GPU) |
 
 ## Project Structure
 
@@ -43,6 +44,7 @@ livery-ai-studio/
 │   ├── routes/             # Blueprint route handlers (api_generate, api_history, etc.)
 │   ├── generate.py         # Gemini AI core generation logic
 │   ├── deploy.py           # iRacing paint folder deployment
+│   ├── seedvr2.py          # SeedVR2 diffusion upscaling (optional)
 │   └── spending.py         # Persistent spending log (data/spending_log.json)
 ├── car_library/            # 180+ pre-extracted car templates
 ├── legacy/                 # Original vanilla JS/HTML/CSS (reference only)
@@ -144,7 +146,7 @@ export function useMyContext() {
 | `HistoryContext` | `useHistoryContext()` | `items, loading, loadHistory, deleteItem, updateItemCar` |
 | `SpendingContext` | `useSpendingContext()` | `entries, totalSpend, lastTransaction, handleTransaction` |
 | `GenerateContext` | `useGenerateContext()` | all `useGenerate` returns (generate, abort, upload, browse, delete, deploy) |
-| `UpscaleContext` | `useUpscaleContext()` | `upscaling, deploying, result, status, upscale, deploy, clearStatus` |
+| `UpscaleContext` | `useUpscaleContext()` | `upscaling, resampling, deploying, result, status, upscale, resample, deploy, clearStatus` |
 | `SpecularContext` | `useSpecularContext()` | `generating, deploying, elapsedSeconds, result, status, generate, abort, deploySpec, clearStatus` |
 | `ToastContext` | `useToastContext()` | `toast(message, type)` |
 
@@ -222,7 +224,8 @@ Use the `Button` component from `common/Button.jsx`:
 | DELETE | `/api/history/<id>` | Delete generation |
 | POST | `/api/generate` | Generate livery |
 | POST | `/api/deploy` | Deploy to iRacing |
-| POST | `/api/upscale` | GPU upscale |
+| POST | `/api/upscale` | GPU upscale (Real-ESRGAN) |
+| POST | `/api/resample` | AI resample (SeedVR2 diffusion) |
 | GET | `/api/browse-uploads/<category>` | Browse uploads |
 | POST | `/api/upload-file` | Upload file |
 | GET | `/api/uploads/preview?path=` | Preview file |
