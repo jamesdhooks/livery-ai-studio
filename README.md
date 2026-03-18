@@ -77,7 +77,7 @@ The app runs as a native desktop window (Flask + pywebview). Fill in the form, c
 | **API Key** | Google Gemini API key with billing enabled — [aistudio.google.com](https://aistudio.google.com) |
 | **iRacing** | Installed with at least one car |
 | **Trading Paints** | Installed from [tradingpaints.com/install](https://www.tradingpaints.com/install) for livery loading |
-| **GPU Upscaling** *(optional)* | NVIDIA GPU (6+ GB VRAM) — install with `start.bat --gpu` |
+| **Real-ESRGAN** *(optional)* | NVIDIA GPU (6+ GB VRAM) — install with `start.bat --realesrgan` |
 | **SeedVR2 Resample** *(optional)* | NVIDIA GPU (8+ GB VRAM recommended) — install with `start.bat --seedvr` |
 
 > Without an NVIDIA GPU, upscaling and resampling are disabled in the UI. Generated textures are still resized to 2048×2048 via Lanczos resampling — works fine, just less sharp than Real-ESRGAN or SeedVR2.
@@ -146,32 +146,55 @@ r. **Make tweaks** using the "Modify" function in the generate tab, make targete
 ## Start Script Options
 
 | Flag | Description |
-|------|-------------|
-| `--gpu` | Install GPU upscaling (NVIDIA required, CUDA 12 default) |
-| `--gpu --cuda 11` | CUDA 11.8 for RTX 30xx |
-| `--gpu --cuda 12` | CUDA 12.4 for RTX 40xx / 50xx |
-| `--gpu --cuda 50` | CUDA 12.8 nightly for RTX 50xx / Blackwell |
+|------|--------------|
+| `--realesrgan` | Install Real-ESRGAN GPU upscaling (NVIDIA required, CUDA 12 default) |
+| `--realesrgan --cuda 11` | CUDA 11.8 for RTX 30xx |
+| `--realesrgan --cuda 12` | CUDA 12.4 for RTX 40xx / 50xx |
+| `--realesrgan --cuda 50` | CUDA 12.8 nightly for RTX 50xx / Blackwell |
 | `--seedvr` | Install SeedVR2 diffusion upscaler (NVIDIA required, Git required) |
-| `--gpu --seedvr` | Install both Real-ESRGAN and SeedVR2 |
+| `--realesrgan --seedvr` | Install both upscale engines |
 | `--port 8080` | Use a custom port (default: 5199) |
 | `--skip-install` | Skip `pip install` for faster restart |
 | `--build-frontend` | Rebuild the React UI (requires Node.js) |
 | `--web-only` | Launch in browser only (skip native pywebview window) |
 | `--auto-load` | **Dev mode:** HMR + hot reload (implies `--web-only`, requires Node.js) |
 
-**GPU setup:** `start.bat --gpu` installs PyTorch + Real-ESRGAN, downloads model weights (~67 MB), and patches a known torchvision compatibility issue automatically.
+**Real-ESRGAN setup:** `start.bat --realesrgan` installs PyTorch + Real-ESRGAN, downloads model weights (~67 MB), and patches a known torchvision compatibility issue automatically. Fast traditional upscaling, ~30 seconds per image.
 
-**SeedVR2 setup:** `start.bat --seedvr` clones the SeedVR2 repository and installs its dependencies. SeedVR2 uses diffusion-based upscaling that produces significantly higher quality results than Real-ESRGAN, especially on AI-generated liveries. It takes longer (2–5 minutes per image vs ~30 seconds) but the quality improvement is substantial. Requires Git and an NVIDIA GPU with 8+ GB VRAM. Use `--gpu --seedvr` to install both engines. You can set your preferred engine in Settings or switch between them on the Upscale tab.
+**SeedVR2 setup:** `start.bat --seedvr` clones the SeedVR2 repository and installs its dependencies. SeedVR2 uses diffusion-based upscaling that produces significantly higher quality results than Real-ESRGAN, especially on AI-generated liveries. It takes longer (30 seconds–2 minutes per image) but the quality improvement is substantial. Requires Git and an NVIDIA GPU with 8+ GB VRAM. Use `--realesrgan --seedvr` to install both engines. You can set your preferred engine in Settings or switch between them on the Upscale tab.
+
+> ℹ️ **SeedVR2 GGUF Model:** The installation includes an optional quantized GGUF model (~2.4 GB) for low-VRAM systems. If the automatic download fails, SeedVR2 will fall back to the default FP8 model, which is slower but still produces excellent results. To manually download the GGUF model, see [SeedVR2 GGUF Manual Download](#seedvr2-gguf-manual-download) below.
 
 **Frontend development:** `start.bat --auto-load` starts the Vite dev server with hot module reload. The Flask backend and frontend dev server run simultaneously on ports 5000 and 5173 respectively. Edit frontend files and see changes instantly without rebuilding.
 
 **Examples:**
-- `start.bat --gpu --build-frontend` — Install GPU + rebuild frontend
+- `start.bat --realesrgan --build-frontend` — Install Real-ESRGAN + rebuild frontend
 - `start.bat --web-only --port 8080` — Browser-only mode on custom port
 - `start.bat --skip-install --web-only` — Quick restart in browser mode
 - `start.bat --auto-load` — Dev server with HMR for frontend development
 
 Run `python setup.py --check` to verify your upscale setup.
+
+---
+
+## SeedVR2 GGUF Manual Download
+
+If the automatic GGUF download failed during installation, you can download it manually:
+
+1. **Download the model** (~2.4 GB):
+   - Go to: https://huggingface.co/numz/SeedVR2/resolve/main/seedvr2_ema_3b-Q8_0.gguf
+   - Or use a download manager if the browser download is unstable
+
+2. **Save it to the correct location:**
+   - Extract the filename: `seedvr2_ema_3b-Q8_0.gguf`
+   - Move it to: `seedvr2_videoupscaler/models/SEEDVR2/seedvr2_ema_3b-Q8_0.gguf`
+   - Inside your Livery AI Studio installation directory
+
+3. **Restart the app:**
+   - Run `start.bat` or `start-quick.bat`
+   - The app will detect the GGUF model and use it automatically
+
+**Why GGUF?** The quantized GGUF model requires less VRAM (~6 GB) compared to the default FP8 model (~12 GB), while maintaining quality. If you have 12+ GB VRAM, the default model works fine and doesn't require manual download.
 
 ---
 
@@ -187,7 +210,7 @@ Run `python setup.py --check` to verify your upscale setup.
 | **Flash 2K** | 2048 px | ~$0.101 |
 | **Pro** | 2048 px | ~$0.134 |
 
-**Best value:** Flash 1K + GPU Upscale — generates at 1K (~$0.067), then Real-ESRGAN 4× upscales to 2048×2048 on your GPU. Same final resolution as 2K at ~33% less cost.
+**Best value:** Flash 1K + Real-ESRGAN Upscale — generates at 1K (~$0.067), then Real-ESRGAN 4× upscales to 2048×2048 on your GPU. Same final resolution as 2K at ~33% less cost.
 
 ---
 
@@ -246,7 +269,7 @@ livery-ai-studio/
 | App won't start | Use `start.bat`, not `python app.py`. Check terminal output for errors. |
 | API key error | Check Settings. Ensure billing is enabled at [console.cloud.google.com](https://console.cloud.google.com) → Billing. |
 | No image returned | Gemini may be at capacity — wait and retry, or switch models. |
-| Upscale tab shows warning | Run `start.bat --gpu`. Requires NVIDIA GPU. |
+| Upscale tab shows warning | Run `start.bat --realesrgan` for Real-ESRGAN, `start.bat --seedvr` for SeedVR2. Both require an NVIDIA GPU. |
 | Poor quality | Use a more detailed prompt, a clean wireframe, and the Pro model. |
 | Result doesn't match the wireframe / panels look wrong | The AI has a mind of its own — results are not guaranteed. Try simplifying your prompt (fewer elements, plainer colours), regenerate a few times, or use Modify mode to nudge a promising result. Panel alignment is inherently approximate because Gemini is generating a 2D texture without true 3D awareness. |
 

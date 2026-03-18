@@ -51,7 +51,7 @@ def get_config():
 
     print("[app] Checking upscale availability…")
     try:
-        from upscale import is_available as _upscale_available
+        from server.upscale import is_available as _upscale_available
         masked["upscale_available"] = _upscale_available()
     except Exception as e:
         print(f"[app] upscale check failed: {e}")
@@ -97,15 +97,9 @@ def get_session():
         "sponsors_wireframe_path": config.get("sponsors_wireframe_path", ""),
         "sponsors_reference_path": config.get("sponsors_reference_path", ""),
         "upscale_preference": config.get("upscale_preference", False),
-        "upscale_engine": config.get("upscale_engine", "realesrgan"),
-        # Legacy flat keys — kept so older clients and migration paths still work
-        "last_prompt": config.get("last_prompt", ""),
-        "last_context": config.get("last_context", ""),
-        "reference_image_paths": config.get("reference_image_paths", []),
-        "reference_context": config.get("reference_context", ""),
-    }
-    print(f"[SESSION_GET] Response has modeState key: {'modeState' in response}", flush=True)
-    return jsonify(response)
+        "upscale_source_path": config.get("upscale_source_path", ""),
+        "resample_config": config.get("resample_config", {}),
+    })
 
 
 @bp.route("/api/session", methods=["POST"])
@@ -120,7 +114,7 @@ def save_session():
         "last_mode", "last_car", "last_model", "last_is_2k", "last_auto_enhance",
         "wireframe_path", "base_texture_path", "sponsors_base_path",
         "sponsors_wireframe_path", "sponsors_reference_path", "upscale_preference",
-        "upscale_engine",
+        "upscale_engine", "upscale_source_path", "resample_config",
     ]
     for field in session_fields:
         if field in data:
@@ -272,3 +266,44 @@ def wipe_data():
 
     print(f"[wipe] Deleted: {deleted}")
     return jsonify({"status": "ok", "deleted": deleted})
+
+
+# ── Upscale capabilities ──────────────────────────────────────────────────────
+
+@bp.route("/api/upscale-status")
+def upscale_status():
+    """Check upscale engine availability and GGUF model status."""
+    from server.config import APP_DIR
+    
+    status = {
+        "realesrgan_available": False,
+        "seedvr2_available": False,
+        "gguf_available": False,
+        "gguf_path": None,
+    }
+    
+    # Check Real-ESRGAN
+    try:
+        import torch
+        import basicsr.archs.rrdbnet_arch
+        status["realesrgan_available"] = True
+    except (ImportError, ModuleNotFoundError):
+        pass
+    
+    # Check SeedVR2 and GGUF — check file existence only, never import inference_cli
+    # (importing it triggers CUDA probes at module level that can segfault the process)
+    try:
+        seedvr_dir = APP_DIR / "seedvr2_videoupscaler"
+        if seedvr_dir.exists():
+            cli_path = seedvr_dir / "inference_cli.py"
+            status["seedvr2_available"] = cli_path.exists()
+
+            # Check for GGUF model
+            gguf_path = seedvr_dir / "seedvr2_ema_3b-Q8_0.gguf"
+            status["gguf_path"] = str(gguf_path)
+            status["gguf_available"] = gguf_path.exists()
+    except Exception:
+        pass
+    
+    return jsonify(status)
+

@@ -92,7 +92,9 @@ def api_generate():
             reference_image_paths = [legacy]
     reference_image_paths = [p for p in reference_image_paths if p and Path(p).exists()]
     reference_context   = data.get("reference_context", "").strip()
-    use_fast            = data.get("use_fast_model",   config.get("use_fast_model", False))
+    # Accept both "model" (React frontend: 'flash'/'pro') and "use_fast_model" (legacy)
+    model_param         = data.get("model", "").strip().lower() or ("flash" if data.get("use_fast_model", config.get("use_fast_model", False)) else "pro")
+    use_fast            = model_param == "flash"
     resolution_2k       = data.get("resolution_2k", True)
     # Accept both "car_name" (legacy) and "car_folder" (React frontend)
     car_name            = (data.get("car_name") or data.get("car_folder") or config.get("default_car", "")).strip()
@@ -126,6 +128,7 @@ def api_generate():
     try:
         model       = MODEL_FAST if use_fast else MODEL_PRO
         car_display = lookup_car_display(car_name)
+        print(f"[GENERATE] Using model: {model} (use_fast={use_fast}, model_param={model_param})")
         liveries_dir = get_liveries_dir()
         liveries_dir.mkdir(parents=True, exist_ok=True)
 
@@ -148,10 +151,16 @@ def api_generate():
             resolution_2k=resolution_2k if use_fast else True,
         )
 
-        if isinstance(result, tuple):
+        # Unpack result: (output_path, conversation_log, upscale_succeeded)
+        if isinstance(result, tuple) and len(result) >= 3:
+            result_path, conversation_log, upscale_succeeded = result[0], result[1], result[2]
+        elif isinstance(result, tuple) and len(result) == 2:
             result_path, conversation_log = result
+            upscale_succeeded = False
         else:
-            result_path, conversation_log = result, None
+            result_path = result
+            conversation_log = None
+            upscale_succeeded = False
 
         response: dict = {
             "status":     "ok",
@@ -214,7 +223,7 @@ def api_generate():
             "car_folder":           car_name,
             "customer_id":          customer_id,
             "auto_deploy":          auto_deploy,
-            "upscaled":             upscale,
+            "upscaled":             upscale_succeeded,
             "generated_at":         ts.isoformat(timespec="seconds"),
             "api_requests":         1,
         }
@@ -309,8 +318,30 @@ def api_generate():
         return jsonify(response)
 
     except Exception as e:
-        import traceback; traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
+        import traceback
+        traceback.print_exc()
+        
+        # Extract error details for frontend error modal
+        error_message = str(e)
+        error_code = None
+        
+        # Check for Gemini API errors (ServerError with helpful message)
+        if "503" in error_message or "UNAVAILABLE" in error_message:
+            error_code = 503
+            # Extract the user-friendly message from Google API error
+            try:
+                if hasattr(e, 'response_json') and isinstance(e.response_json, dict):
+                    api_msg = e.response_json.get('error', {}).get('message', '')
+                    if api_msg:
+                        error_message = api_msg
+            except Exception:
+                pass
+        
+        response = {"error": error_message}
+        if error_code:
+            response["error_code"] = error_code
+        
+        return jsonify(response), 500
 
 
 # ── Spending log endpoints ─────────────────────────────────────────────────────
@@ -442,7 +473,9 @@ def api_sponsors():
     wireframe_path    = _resolve_image_path(data.get("wireframe_path", "").strip())
     reference_path    = _resolve_image_path(data.get("reference_path",  "").strip())
     notes             = data.get("notes", "").strip()
-    use_fast          = data.get("use_fast_model", config.get("use_fast_model", False))
+    # Accept both "model" (React frontend: 'flash'/'pro') and "use_fast_model" (legacy)
+    model_param       = data.get("model", "").strip().lower() or ("flash" if data.get("use_fast_model", config.get("use_fast_model", False)) else "pro")
+    use_fast          = model_param == "flash"
     car_name          = (data.get("car_name") or data.get("car_folder") or config.get("default_car", "")).strip()
     customer_id       = data.get("customer_id", config.get("customer_id",  "")).strip()
     auto_deploy       = data.get("auto_deploy", True)
@@ -711,7 +744,9 @@ def api_generate_specular():
                          data.get("wireframe_path", config.get("default_wireframe", "")).strip())
     livery_path_in   = _resolve_image_path(
                          data.get("livery_path", "").strip())
-    use_fast         = data.get("use_fast_model", config.get("use_fast_model", False))
+    # Accept both "model" (React frontend: 'flash'/'pro') and "use_fast_model" (legacy)
+    model_param      = data.get("model", "").strip().lower() or ("flash" if data.get("use_fast_model", config.get("use_fast_model", False)) else "pro")
+    use_fast         = model_param == "flash"
     resolution_2k    = data.get("resolution_2k", True)
     car_name         = (data.get("car_folder") or data.get("car_name") or config.get("default_car", "")).strip()
     customer_id      = data.get("customer_id", config.get("customer_id", "")).strip()

@@ -25,7 +25,10 @@ export function HistoryProvider({ children }) {
 
 /**
  * useHistoryContext — returns the full useHistory interface:
- *   { items, loading, error, loadHistory, deleteItem, updateItemCar, getTotalSpend }
+ *   { items, loading, error, loadHistory, deleteItem, trashMany,
+ *     updateItemCar, getTotalSpend,
+ *     trashItems, trashCount, trashLoading,
+ *     loadTrash, restoreFromTrash, restoreManyFromTrash, clearTrash }
  */
 export function useHistoryContext() {
   const ctx = useContext(HistoryContext);

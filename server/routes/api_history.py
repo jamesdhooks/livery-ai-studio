@@ -1,16 +1,23 @@
 """
 server/routes/api_history.py
 ----------------------------
-/api/history         — list generated liveries
-/api/history/delete  — delete a livery
-/api/history-detail  — return sidecar JSON
-/api/deploy          — copy TGA to iRacing paint folder
-/api/clear-paint     — remove car_<id>.tga from iRacing
-/api/upscale         — Real-ESRGAN upscale
-/api/resample        — SeedVR2 diffusion resample
-/api/preview         — base64 PNG preview of a TGA
-/api/preview-jpg     — base64 of an existing preview JPG
-/api/image-data      — full-resolution base64 PNG
+/api/history              — list generated liveries (excludes trash)
+/api/history/delete       — move a livery to trash
+/api/history/trash        — list trashed liveries
+/api/history/trash/move   — move selected liveries to trash
+/api/history/trash/restore — restore a trashed livery
+/api/history/trash/restore-many — restore multiple trashed liveries
+/api/history/trash/purge  — permanently delete a trashed livery
+/api/history/trash/clear  — permanently delete ALL trash
+/api/history/trash/count  — count trashed liveries
+/api/history-detail       — return sidecar JSON
+/api/deploy               — copy TGA to iRacing paint folder
+/api/clear-paint          — remove car_<id>.tga from iRacing
+/api/upscale              — Real-ESRGAN upscale
+/api/resample             — SeedVR2 diffusion resample
+/api/preview              — base64 PNG preview of a TGA
+/api/preview-jpg          — base64 of an existing preview JPG
+/api/image-data           — full-resolution base64 PNG
 """
 
 from __future__ import annotations
@@ -19,12 +26,22 @@ import base64
 import io
 import json
 import shutil
+import time
 from pathlib import Path
 
 from flask import Blueprint, jsonify, request
 
 from server.config import get_data_dir, get_liveries_dir, get_thumbnails_dir, load_config
 from server.deploy import deploy_livery, deploy_spec_livery, get_iracing_paint_dir, resolve_car_folder
+
+TRASH_RETENTION_SECONDS = 86_400  # 1 day
+
+
+def get_trash_dir() -> Path:
+    """Return (and create) the trash directory under the data dir."""
+    d = get_data_dir() / "trash"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
 
 bp = Blueprint("api_history", __name__)
 
@@ -33,57 +50,101 @@ bp = Blueprint("api_history", __name__)
 
 @bp.route("/api/history", methods=["GET"])
 def api_history():
+    """
+    Scans liveries_dir for .json sidecar files (source of truth).
+    For each sidecar, resolves the associated TGA and preview thumbnail.
+    Items without a sidecar (orphaned TGAs) are also included as bare entries.
+    Trashed items (those with a trash_date in their sidecar) are excluded.
+    """
     liveries_dir = get_liveries_dir()
     if not liveries_dir.exists():
         return jsonify([])
 
-    files = sorted(liveries_dir.glob("*.tga"), key=lambda f: f.stat().st_mtime, reverse=True)
-    items = []
-    for f in files[:100]:
-        if f.stem.endswith("_upscaled"):
-            continue
-        item: dict = {
-            "name":     f.stem.replace("_", " "),
-            "filename": f.name,
-            "path":     str(f),
-            "modified": f.stat().st_mtime,
-        }
-        # Look for preview JPG: first in .thumbnails (new), then legacy location next to TGA
-        thumb_dir = get_thumbnails_dir()
-        preview_jpg = thumb_dir / (f.stem + "_preview.jpg")
-        if not preview_jpg.exists():
-            legacy_preview = f.with_name(f.stem + "_preview.jpg")
-            if legacy_preview.exists():
-                # Migrate legacy preview to .thumbnails
-                try:
-                    shutil.move(str(legacy_preview), str(preview_jpg))
-                except Exception:
-                    preview_jpg = legacy_preview  # fallback: use in-place
-        if preview_jpg.exists():
-            item["preview_jpg"] = str(preview_jpg)
-        upscaled_tga = f.with_name(f.stem + "_upscaled.tga")
-        if upscaled_tga.exists():
-            item["upscaled"]      = True
-            item["upscaled_path"] = str(upscaled_tga)
+    thumb_dir = get_thumbnails_dir()
 
-        sidecar = f.with_suffix(".json")
-        if sidecar.exists():
+    def resolve_preview(stem):
+        """Find the best available preview jpg for a given file stem."""
+        # New location: .thumbnails/<stem>_preview.jpg
+        thumb = thumb_dir / (stem + "_preview.jpg")
+        if thumb.exists():
+            return str(thumb)
+        # Legacy: next to TGA
+        legacy = liveries_dir / (stem + "_preview.jpg")
+        if legacy.exists():
+            # Migrate to thumbnails dir
             try:
-                meta = json.loads(sidecar.read_text(encoding="utf-8"))
-                for key in ("prompt", "mode", "model", "car", "car_folder", "customer_id",
-                            "wireframe_path", "base_texture_path", "auto_deploy",
-                            "api_requests", "estimated_cost", "cost_breakdown",
-                            "conversation_log", "generated_at",
-                            "entry_type", "source_livery_path", "spec_maps", "iterations"):
-                    item[key] = meta.get(key)
-                if meta.get("upscaled"):
-                    item["upscaled"] = True
+                shutil.move(str(legacy), str(thumb))
+                return str(thumb)
             except Exception:
-                pass
-        items.append(item)
-        if len(items) >= 50:
-            break
-    return jsonify(items)
+                return str(legacy)
+        return None
+
+    seen_stems = set()
+    raw_items = []
+
+    # ── Primary pass: scan all .json sidecars ────────────────────────────────
+    for sidecar in liveries_dir.glob("*.json"):
+        stem = sidecar.stem
+        seen_stems.add(stem)
+
+        try:
+            meta = json.loads(sidecar.read_text(encoding="utf-8"))
+        except Exception:
+            meta = {}
+
+        # Skip trashed items — they live in the trash flow
+        if meta.get("trash_date"):
+            continue
+
+        # Resolve matching TGA (stem.tga)
+        tga = liveries_dir / (stem + ".tga")
+        mtime = tga.stat().st_mtime if tga.exists() else sidecar.stat().st_mtime
+
+        item: dict = {
+            "name":        stem.replace("_", " "),
+            "filename":    tga.name if tga.exists() else stem,
+            "path":        str(tga) if tga.exists() else None,
+            "livery_path": str(tga) if tga.exists() else None,
+            "modified":    mtime,
+        }
+
+        # Merge all known meta fields
+        for key in ("prompt", "mode", "model", "car", "car_folder", "customer_id",
+                    "wireframe_path", "base_texture_path", "auto_deploy",
+                    "api_requests", "estimated_cost", "cost_breakdown",
+                    "conversation_log", "generated_at", "entry_type",
+                    "source_livery_path", "spec_maps", "iterations",
+                    "upscaled", "upscale_engine", "resampled", "resample_engine",
+                    "source_path", "resolution_2k"):
+            if key in meta:
+                item[key] = meta[key]
+
+        # Preview thumbnail
+        preview = resolve_preview(stem)
+        if preview:
+            item["preview_jpg"] = preview
+
+        raw_items.append(item)
+
+    # ── Secondary pass: orphaned TGAs with no sidecar ───────────────────────
+    for tga in liveries_dir.glob("*.tga"):
+        if tga.stem in seen_stems:
+            continue
+        item = {
+            "name":        tga.stem.replace("_", " "),
+            "filename":    tga.name,
+            "path":        str(tga),
+            "livery_path": str(tga),
+            "modified":    tga.stat().st_mtime,
+        }
+        preview = resolve_preview(tga.stem)
+        if preview:
+            item["preview_jpg"] = preview
+        raw_items.append(item)
+
+    # Sort by mtime descending, cap at 100
+    raw_items.sort(key=lambda x: x.get("modified", 0), reverse=True)
+    return jsonify(raw_items[:100])
 
 
 @bp.route("/api/history/update", methods=["POST"])
@@ -121,6 +182,7 @@ def api_history_update():
 
 @bp.route("/api/history/delete", methods=["POST"])
 def api_history_delete():
+    """Move one livery to trash (sets trash_date in sidecar, moves files to trash dir)."""
     data     = request.json or {}
     tga_path = data.get("path", "").strip()
     if not tga_path:
@@ -131,23 +193,259 @@ def api_history_delete():
     try:
         p.resolve().relative_to(get_liveries_dir().resolve())
     except ValueError:
-        return jsonify({"error": "Cannot delete files outside the liveries directory"}), 403
+        return jsonify({"error": "Cannot trash files outside the liveries directory"}), 403
 
-    deleted = []
+    return _move_to_trash(p)
+
+
+def _move_to_trash(tga_path: Path):
+    """Move a livery (and its sidecar + thumbnail) into the trash folder."""
+    trash_dir = get_trash_dir()
+    stem      = tga_path.stem
+    moved     = []
+    trash_date = time.time()
+
+    # Move TGA + associated files
     for suffix in (".tga", ".json", ".jpg"):
-        f = p.with_suffix(suffix)
+        f = tga_path.with_suffix(suffix)
         if f.exists():
-            f.unlink(); deleted.append(f.name)
-    for extra in (p.with_name(p.stem + "_preview.jpg"), p.with_name(p.stem + "_upscaled.tga")):
+            dest = trash_dir / f.name
+            shutil.move(str(f), str(dest))
+            moved.append(f.name)
+
+    for extra in (tga_path.with_name(stem + "_preview.jpg"),
+                  tga_path.with_name(stem + "_upscaled.tga")):
         if extra.exists():
-            extra.unlink(); deleted.append(extra.name)
-    # Clean up thumbnail in .thumbnails dir
+            dest = trash_dir / extra.name
+            shutil.move(str(extra), str(dest))
+            moved.append(extra.name)
+
+    # Move thumbnail
     try:
-        thumb = get_thumbnails_dir() / (p.stem + "_preview.jpg")
+        thumb = get_thumbnails_dir() / (stem + "_preview.jpg")
         if thumb.exists():
-            thumb.unlink(); deleted.append(thumb.name)
+            dest = trash_dir / thumb.name
+            shutil.move(str(thumb), str(dest))
+            moved.append(thumb.name)
     except Exception:
         pass
+
+    # Update (or create) sidecar in trash with trash_date
+    sidecar_in_trash = trash_dir / (stem + ".json")
+    try:
+        if sidecar_in_trash.exists():
+            meta = json.loads(sidecar_in_trash.read_text(encoding="utf-8"))
+        else:
+            meta = {}
+        meta["trash_date"] = trash_date
+        sidecar_in_trash.write_text(json.dumps(meta, indent=2), encoding="utf-8")
+    except Exception as e:
+        print(f"[trash] Warning: couldn't update sidecar: {e}")
+
+    return jsonify({"status": "ok", "moved": moved})
+
+
+# ── Trash API ─────────────────────────────────────────────────────────────────
+
+@bp.route("/api/history/trash/move", methods=["POST"])
+def api_history_trash_move():
+    """Move multiple liveries to trash."""
+    data  = request.json or {}
+    paths = data.get("paths", [])
+    if not paths:
+        return jsonify({"error": "No paths provided"}), 400
+
+    liveries_dir = get_liveries_dir()
+    results = []
+    for tga_path_str in paths:
+        p = Path(tga_path_str.strip())
+        if not p.exists():
+            results.append({"path": tga_path_str, "error": "File not found"})
+            continue
+        try:
+            p.resolve().relative_to(liveries_dir.resolve())
+        except ValueError:
+            results.append({"path": tga_path_str, "error": "Outside liveries directory"})
+            continue
+        _move_to_trash(p)
+        results.append({"path": tga_path_str, "status": "ok"})
+
+    return jsonify({"status": "ok", "results": results})
+
+
+@bp.route("/api/history/trash", methods=["GET"])
+def api_history_trash():
+    """Return all trashed liveries."""
+    trash_dir = get_trash_dir()
+
+    items = []
+    for sidecar in trash_dir.glob("*.json"):
+        stem = sidecar.stem
+        try:
+            meta = json.loads(sidecar.read_text(encoding="utf-8"))
+        except Exception:
+            meta = {}
+
+        tga = trash_dir / (stem + ".tga")
+        mtime = tga.stat().st_mtime if tga.exists() else sidecar.stat().st_mtime
+
+        item: dict = {
+            "name":        stem.replace("_", " "),
+            "filename":    tga.name if tga.exists() else stem,
+            "path":        str(tga) if tga.exists() else str(sidecar),
+            "livery_path": str(tga) if tga.exists() else None,
+            "modified":    mtime,
+            "trash_date":  meta.get("trash_date", mtime),
+        }
+
+        for key in ("prompt", "mode", "model", "car", "car_folder", "display_name",
+                    "estimated_cost", "generated_at", "entry_type", "resolution_2k"):
+            if key in meta:
+                item[key] = meta[key]
+
+        # Thumbnail — check trash dir first, then thumbnails dir
+        thumb = trash_dir / (stem + "_preview.jpg")
+        if thumb.exists():
+            item["preview_jpg"] = str(thumb)
+        else:
+            thumb2 = get_thumbnails_dir() / (stem + "_preview.jpg")
+            if thumb2.exists():
+                item["preview_jpg"] = str(thumb2)
+
+        if "preview_jpg" in item:
+            item["preview_url"] = f'/api/uploads/preview?path={item["preview_jpg"]}'
+
+        items.append(item)
+
+    items.sort(key=lambda x: x.get("trash_date", 0), reverse=True)
+    return jsonify(items)
+
+
+@bp.route("/api/history/trash/count", methods=["GET"])
+def api_history_trash_count():
+    """Return the number of trashed items."""
+    trash_dir = get_trash_dir()
+    count = sum(1 for _ in trash_dir.glob("*.json"))
+    return jsonify({"count": count})
+
+
+@bp.route("/api/history/trash/restore", methods=["POST"])
+def api_history_trash_restore():
+    """Restore a single trashed livery back to liveries_dir."""
+    data     = request.json or {}
+    tga_path = data.get("path", "").strip()
+    if not tga_path:
+        return jsonify({"error": "No path provided"}), 400
+    p = Path(tga_path)
+    if not p.parent.resolve() == get_trash_dir().resolve():
+        # Accept paths that may point to either TGA or JSON in trash
+        p = get_trash_dir() / Path(tga_path).name
+    return _restore_from_trash(p)
+
+
+@bp.route("/api/history/trash/restore-many", methods=["POST"])
+def api_history_trash_restore_many():
+    """Restore multiple trashed liveries back to liveries_dir."""
+    data  = request.json or {}
+    paths = data.get("paths", [])
+    if not paths:
+        return jsonify({"error": "No paths provided"}), 400
+
+    results = []
+    for path_str in paths:
+        p = Path(path_str.strip())
+        resp_data = _restore_item(p)
+        results.append(resp_data)
+
+    return jsonify({"status": "ok", "results": results})
+
+
+def _restore_item(p: Path) -> dict:
+    """Restore helper — returns a result dict."""
+    trash_dir    = get_trash_dir()
+    liveries_dir = get_liveries_dir()
+    liveries_dir.mkdir(parents=True, exist_ok=True)
+
+    stem = p.stem
+    moved = []
+
+    for suffix in (".tga", ".json", ".jpg"):
+        f = trash_dir / (stem + suffix)
+        if f.exists():
+            dest = liveries_dir / f.name
+            shutil.move(str(f), str(dest))
+            moved.append(f.name)
+
+    for extra_name in (stem + "_preview.jpg", stem + "_upscaled.tga"):
+        f = trash_dir / extra_name
+        if f.exists():
+            dest = liveries_dir / f.name
+            shutil.move(str(f), str(dest))
+            moved.append(f.name)
+
+    # Remove trash_date from sidecar
+    sidecar = liveries_dir / (stem + ".json")
+    if sidecar.exists():
+        try:
+            meta = json.loads(sidecar.read_text(encoding="utf-8"))
+            meta.pop("trash_date", None)
+            sidecar.write_text(json.dumps(meta, indent=2), encoding="utf-8")
+        except Exception as e:
+            print(f"[trash] Warning: couldn't update sidecar on restore: {e}")
+
+    return {"path": str(p), "status": "ok", "moved": moved}
+
+
+def _restore_from_trash(p: Path):
+    """Move a trashed item back to liveries and return a Flask response."""
+    trash_dir = get_trash_dir()
+    if not (trash_dir / (p.stem + ".tga")).exists() and not (trash_dir / (p.stem + ".json")).exists():
+        return jsonify({"error": "Item not found in trash"}), 404
+    result = _restore_item(p)
+    return jsonify(result)
+
+
+@bp.route("/api/history/trash/purge", methods=["POST"])
+def api_history_trash_purge():
+    """Permanently delete a single trashed livery."""
+    data     = request.json or {}
+    tga_path = data.get("path", "").strip()
+    if not tga_path:
+        return jsonify({"error": "No path provided"}), 400
+
+    trash_dir = get_trash_dir()
+    p         = Path(tga_path)
+    stem      = p.stem
+    deleted   = []
+
+    for suffix in (".tga", ".json", ".jpg"):
+        f = trash_dir / (stem + suffix)
+        if f.exists():
+            f.unlink()
+            deleted.append(f.name)
+
+    for extra_name in (stem + "_preview.jpg", stem + "_upscaled.tga"):
+        f = trash_dir / extra_name
+        if f.exists():
+            f.unlink()
+            deleted.append(f.name)
+
+    return jsonify({"status": "ok", "deleted": deleted})
+
+
+@bp.route("/api/history/trash/clear", methods=["POST"])
+def api_history_trash_clear():
+    """Permanently delete ALL items in trash."""
+    trash_dir = get_trash_dir()
+    deleted   = []
+
+    for f in trash_dir.iterdir():
+        try:
+            f.unlink()
+            deleted.append(f.name)
+        except Exception:
+            pass
+
     return jsonify({"status": "ok", "deleted": deleted})
 
 
@@ -171,9 +469,9 @@ def api_history_detail():
 @bp.route("/api/deploy", methods=["POST"])
 def api_deploy():
     data        = request.json or {}
-    tga_path    = data.get("path", "").strip()
-    car_name    = data.get("car_folder", "").strip()
-    customer_id = data.get("customer_id", "").strip()
+    tga_path    = (data.get("path") or "").strip()
+    car_name    = (data.get("car_folder") or "").strip()
+    customer_id = (data.get("customer_id") or "").strip()
 
     if not tga_path:
         return jsonify({"error": "No TGA path provided"}), 400
@@ -288,108 +586,310 @@ def api_deploy_default():
 
 @bp.route("/api/upscale", methods=["POST"])
 def api_upscale():
+    """Upscale directly to 2048×2048 using the configured engine (no downres step)."""
     from PIL import Image
+    from server.config import load_config
 
     data        = request.json or {}
-    source_path = data.get("path", "").strip()
+    source_path = (data.get("path") or "").strip()
 
     if not source_path or not Path(source_path).exists():
         return jsonify({"error": "Source file not found"}), 404
 
+    config = load_config()
+    engine = config.get("upscale_engine", "realesrgan")
+
     try:
-        from upscale import upscale_to_2048, is_available
-        if not is_available():
-            return jsonify({"error": "Real-ESRGAN is not available. See README for setup."}), 400
+        print(f"[upscale] Loading {source_path} (engine={engine})")
+        image = Image.open(source_path)
 
-        print(f"[upscale] Loading {source_path}")
-        upscaled = upscale_to_2048(Image.open(source_path))
+        if engine == "seedvr2":
+            from server.seedvr2 import upscale_direct, is_available as seedvr2_available
+            if not seedvr2_available():
+                return jsonify({"error": "SeedVR2 is not installed. Re-launch with start.bat --seedvr"}), 400
+            use_gguf = config.get("seedvr2_use_gguf", True)
+            use_multi_gpu = config.get("seedvr2_multi_gpu", False)
+            result_image = upscale_direct(image, use_gguf=use_gguf, use_multi_gpu=use_multi_gpu)
+        else:
+            from server.upscale import upscale_to_2048, is_available as realesrgan_available
+            if not realesrgan_available():
+                return jsonify({"error": "Real-ESRGAN is not installed. Re-launch with start.bat --realesrgan"}), 400
+            result_image = upscale_to_2048(image)
 
-        src     = Path(source_path)
-        out_name = src.name if src.stem.endswith("_upscaled") else src.stem + "_upscaled.tga"
-        out_path = src.parent / out_name
-        upscaled.save(str(out_path), format="TGA")
+        src           = Path(source_path)
+        liveries_dir  = get_liveries_dir()
+        liveries_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Save to liveries directory (so it shows in history)
+        out_name = src.stem.replace("_upscaled", "").replace("_resampled", "") + "_upscaled.tga"
+        out_path = liveries_dir / out_name
+        result_image.save(str(out_path), format="TGA")
         print(f"[upscale] Saved → {out_path}")
 
-        # Update sidecar
+        # Create sidecar — inherit metadata from source if available
         try:
-            original_stem = src.stem.replace("_upscaled", "")
-            sidecar_path  = src.parent / (original_stem + ".json")
-            if sidecar_path.exists():
-                meta = json.loads(sidecar_path.read_text(encoding="utf-8"))
-                meta["upscaled"]      = True
-                meta["upscaled_path"] = str(out_path)
-                sidecar_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
+            sidecar_path = liveries_dir / (out_path.stem + ".json")
+            
+            # Start with inherited metadata from source sidecar
+            meta = {}
+            source_sidecar = src.with_suffix(".json")
+            if source_sidecar.exists():
+                try:
+                    source_meta = json.loads(source_sidecar.read_text(encoding="utf-8"))
+                    # Inherit key fields
+                    for key in ("prompt", "mode", "model", "car", "car_folder", "customer_id",
+                                "display_name", "conversation_log", "generated_at", "entry_type",
+                                "resolution_2k"):
+                        if key in source_meta:
+                            meta[key] = source_meta[key]
+                except Exception as e:
+                    print(f"[upscale] Warning: couldn't read source sidecar: {e}")
+            
+            # Add upscale-specific metadata
+            meta["upscaled"] = True
+            meta["upscale_engine"] = engine
+            meta["source_path"] = str(src)
+            
+            sidecar_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
         except Exception as sc_err:
-            print(f"[upscale] Warning: couldn't update sidecar: {sc_err}")
+            print(f"[upscale] Warning: couldn't create sidecar: {sc_err}")
 
-        preview = upscaled.copy().convert("RGBA")
+        # Save thumbnail preview JPG to thumbnails dir (for history cards)
+        try:
+            thumb_dir = get_thumbnails_dir()
+            thumb_dir.mkdir(parents=True, exist_ok=True)
+            thumb = result_image.copy().convert("RGB")
+            thumb.thumbnail((512, 512))
+            thumb.save(str(thumb_dir / (out_path.stem + "_preview.jpg")), format="JPEG", quality=85)
+        except Exception as th_err:
+            print(f"[upscale] Warning: couldn't save thumbnail: {th_err}")
+
+        # Generate full-res base64 PNG for display
+        full_res_png = result_image.copy().convert("RGBA")
+        full_buf = io.BytesIO()
+        full_res_png.save(full_buf, format="PNG")
+        full_buf.seek(0)  # Reset buffer position before reading
+        full_res_b64 = base64.b64encode(full_buf.getvalue()).decode()
+
+        # Generate preview (512px)
+        preview = result_image.copy().convert("RGBA")
         preview.thumbnail((512, 512))
-        buf = io.BytesIO()
-        preview.save(buf, format="PNG")
+        prev_buf = io.BytesIO()
+        preview.save(prev_buf, format="PNG")
+        prev_buf.seek(0)  # Reset buffer position before reading
 
         return jsonify({
             "status":       "ok",
             "output_path":  str(out_path),
-            "preview_b64":  base64.b64encode(buf.getvalue()).decode(),
-            "size":         list(upscaled.size),
+            "preview_b64":  base64.b64encode(prev_buf.getvalue()).decode(),
+            "full_res_b64": full_res_b64,
+            "size":         list(result_image.size),
         })
     except Exception as e:
         import traceback; traceback.print_exc()
+        
+        # Check for VRAM exhaustion errors
+        error_str = str(e)
+        if "OutOfMemoryError" in error_str or "out of memory" in error_str or "Allocation on device" in error_str:
+            return jsonify({
+                "error": "Out of VRAM (Video Memory). Lower the resolution, download the GGUF model, or switch to ESRGAN engine.",
+                "error_code": "OUT_OF_VRAM"
+            }), 500
+        
         return jsonify({"error": str(e)}), 500
 
 
-# ── SeedVR2 Resample ─────────────────────────────────────────────────────────
+# ── Resample ─────────────────────────────────────────────────────────────────
 
 @bp.route("/api/resample", methods=["POST"])
 def api_resample():
-    """Resample a livery using SeedVR2 (downres → diffusion upscale → 2048×2048)."""
+    """
+    Resample: downscale → optional noise → upscale → optional final downscale.
+
+    Request body (all optional except ``path``):
+        path            str   — absolute source path
+        downsample_size int   — size to downscale to before upscaling (default 1024)
+        upsample_size   int   — target upscale size (default 2048)
+        final_2k        bool  — if True and upsample_size > 2048, downsample result to 2048
+        add_noise       bool  — if True, add noise to the downscaled image before upscaling
+        noise_amount    float — 0–100 noise strength (default 0)
+    """
+    import numpy as np
     from PIL import Image
+    from server.config import load_config
+    from server.upscale import _resize_aspect_aware
 
     data        = request.json or {}
-    source_path = data.get("path", "").strip()
+    source_path = (data.get("path") or "").strip()
 
     if not source_path or not Path(source_path).exists():
         return jsonify({"error": "Source file not found"}), 404
 
+    config = load_config()
+    engine = config.get("upscale_engine", "realesrgan")
+
+    # ── Parameters ────────────────────────────────────────────────────────────
+    downsample_size = int(data.get("downsample_size", 1024))
+    upsample_size   = int(data.get("upsample_size",   2048))
+    final_2k        = bool(data.get("final_2k",       False))
+    add_noise       = bool(data.get("add_noise",       False))
+    noise_amount    = float(data.get("noise_amount",   0.0))
+
+    # Clamp to sane values
+    VALID_SIZES = {128, 256, 512, 1024, 2048, 4096}
+    downsample_size = downsample_size if downsample_size in VALID_SIZES else 1024
+    upsample_size   = upsample_size   if upsample_size   in VALID_SIZES else 2048
+    noise_amount    = max(0.0, min(100.0, noise_amount))
+
     try:
-        from server.seedvr2 import resample as seedvr2_resample, is_available as seedvr2_available
-        if not seedvr2_available():
-            return jsonify({"error": "SeedVR2 is not available. Run start.bat --seedvr to install."}), 400
+        print(f"[resample] Loading {source_path} (engine={engine}, down={downsample_size}, up={upsample_size}, noise={noise_amount if add_noise else 'off'}, final_2k={final_2k})")
+        image = Image.open(source_path).convert("RGBA")
 
-        print(f"[resample] Loading {source_path}")
-        resampled = seedvr2_resample(Image.open(source_path))
+        # ── Step 1: Downscale ─────────────────────────────────────────────────
+        downscaled = _resize_aspect_aware(image, downsample_size)
+        print(f"[resample] Downscaled to {downsample_size}px (longest side)")
 
-        src      = Path(source_path)
-        out_name = src.stem + "_resampled.tga"
-        out_path = src.parent / out_name
-        resampled.save(str(out_path), format="TGA")
+        # ── Step 2: Add noise (optional) ──────────────────────────────────────
+        noised_b64 = None
+        if add_noise and noise_amount > 0:
+            # Convert noise_amount (0–100) to a sigma for Gaussian noise.
+            # At 100%, sigma = 25 (≈10% of 255), which is visually strong but not destructive.
+            sigma = (noise_amount / 100.0) ** 1.5 * 25.0
+            arr = np.array(downscaled, dtype=np.float32)
+            noise = np.random.normal(0, sigma, arr.shape).astype(np.float32)
+            # Only apply noise to RGB channels, leave alpha untouched
+            arr[:, :, :3] = np.clip(arr[:, :, :3] + noise[:, :, :3], 0, 255)
+            downscaled = Image.fromarray(arr.astype(np.uint8), "RGBA")
+            print(f"[resample] Applied Gaussian noise sigma={sigma:.2f}")
+
+            # Save noised downscaled image as base64 for frontend display
+            noised_buf = io.BytesIO()
+            noised_thumb = downscaled.copy()
+            noised_thumb.thumbnail((512, 512))
+            noised_thumb.save(noised_buf, format="PNG")
+            noised_buf.seek(0)
+            noised_b64 = base64.b64encode(noised_buf.getvalue()).decode()
+
+        # Save the downscaled (possibly noised) input for reference alongside result
+        src           = Path(source_path)
+        liveries_dir  = get_liveries_dir()
+        liveries_dir.mkdir(parents=True, exist_ok=True)
+        out_stem      = src.stem.replace("_resampled", "").replace("_upscaled", "") + "_resampled"
+
+        noised_path = None
+        if add_noise and noise_amount > 0:
+            noised_path = liveries_dir / (out_stem + "_noised_input.png")
+            downscaled.save(str(noised_path), format="PNG")
+            print(f"[resample] Saved noised input → {noised_path}")
+
+        # ── Step 3: Upscale ───────────────────────────────────────────────────
+        if engine == "seedvr2":
+            from server.seedvr2 import resample as seedvr2_resample, is_available as seedvr2_available
+            if not seedvr2_available():
+                return jsonify({"error": "SeedVR2 is not installed. Re-launch with start.bat --seedvr"}), 400
+            use_gguf = config.get("seedvr2_use_gguf", True)
+            use_multi_gpu = config.get("seedvr2_multi_gpu", False)
+            result_image = seedvr2_resample(downscaled, use_gguf=use_gguf, use_multi_gpu=use_multi_gpu, target_size=upsample_size)
+        else:
+            from server.upscale import resample_image, is_available as realesrgan_available
+            if not realesrgan_available():
+                return jsonify({"error": "Real-ESRGAN is not installed. Re-launch with start.bat --realesrgan"}), 400
+            result_image = resample_image(downscaled, target_size=upsample_size)
+
+        print(f"[resample] Upscale complete → {result_image.size}")
+
+        # ── Step 4: Final downscale to 2K (optional) ─────────────────────────
+        if final_2k and upsample_size > 2048:
+            result_image = _resize_aspect_aware(result_image, 2048)
+            print(f"[resample] Final downsample to 2048px (longest side)")
+
+        # ── Save result ───────────────────────────────────────────────────────
+        out_path = liveries_dir / (out_stem + ".tga")
+        result_image.save(str(out_path), format="TGA")
         print(f"[resample] Saved → {out_path}")
 
-        # Update sidecar
+        # Create sidecar — inherit metadata from source if available
         try:
-            original_stem = src.stem.replace("_resampled", "").replace("_upscaled", "")
-            sidecar_path  = src.parent / (original_stem + ".json")
-            if sidecar_path.exists():
-                meta = json.loads(sidecar_path.read_text(encoding="utf-8"))
-                meta["resampled"]      = True
-                meta["resampled_path"] = str(out_path)
-                sidecar_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
+            sidecar_path = liveries_dir / (out_path.stem + ".json")
+            
+            # Start with inherited metadata from source sidecar
+            meta = {}
+            source_sidecar = src.with_suffix(".json")
+            if source_sidecar.exists():
+                try:
+                    source_meta = json.loads(source_sidecar.read_text(encoding="utf-8"))
+                    # Inherit key fields
+                    for key in ("prompt", "mode", "model", "car", "car_folder", "customer_id",
+                                "display_name", "conversation_log", "generated_at", "entry_type",
+                                "resolution_2k"):
+                        if key in source_meta:
+                            meta[key] = source_meta[key]
+                except Exception as e:
+                    print(f"[resample] Warning: couldn't read source sidecar: {e}")
+            
+            # Add resample-specific metadata
+            meta["resampled"]      = True
+            meta["resample_engine"] = engine
+            meta["source_path"]    = str(src)
+            meta["downsample_size"] = downsample_size
+            meta["upsample_size"]  = upsample_size
+            meta["final_2k"]       = final_2k
+            meta["add_noise"]      = add_noise
+            meta["noise_amount"]   = noise_amount
+            meta["noised_input_path"] = str(noised_path) if noised_path else None
+            
+            sidecar_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
         except Exception as sc_err:
-            print(f"[resample] Warning: couldn't update sidecar: {sc_err}")
+            print(f"[resample] Warning: couldn't create sidecar: {sc_err}")
 
-        preview = resampled.copy().convert("RGBA")
+        # Save thumbnail preview JPG to thumbnails dir (for history cards)
+        try:
+            thumb_dir = get_thumbnails_dir()
+            thumb_dir.mkdir(parents=True, exist_ok=True)
+            thumb = result_image.copy().convert("RGB")
+            thumb.thumbnail((512, 512))
+            thumb.save(str(thumb_dir / (out_path.stem + "_preview.jpg")), format="JPEG", quality=85)
+        except Exception as th_err:
+            print(f"[resample] Warning: couldn't save thumbnail: {th_err}")
+
+        # Generate full-res base64 PNG for display
+        full_res_png = result_image.copy().convert("RGBA")
+        full_buf = io.BytesIO()
+        full_res_png.save(full_buf, format="PNG")
+        full_buf.seek(0)
+        full_res_b64 = base64.b64encode(full_buf.getvalue()).decode()
+
+        # Generate preview (512px)
+        preview = result_image.copy().convert("RGBA")
         preview.thumbnail((512, 512))
-        buf = io.BytesIO()
-        preview.save(buf, format="PNG")
+        prev_buf = io.BytesIO()
+        preview.save(prev_buf, format="PNG")
+        prev_buf.seek(0)
 
-        return jsonify({
+        response = {
             "status":       "ok",
             "output_path":  str(out_path),
-            "preview_b64":  base64.b64encode(buf.getvalue()).decode(),
-            "size":         list(resampled.size),
-        })
+            "preview_b64":  base64.b64encode(prev_buf.getvalue()).decode(),
+            "full_res_b64": full_res_b64,
+            "size":         list(result_image.size),
+        }
+        if noised_b64:
+            response["noised_input_b64"] = noised_b64
+        if noised_path:
+            response["noised_input_path"] = str(noised_path)
+
+        return jsonify(response)
     except Exception as e:
         import traceback; traceback.print_exc()
+        
+        # Check for VRAM exhaustion errors
+        error_str = str(e)
+        if "OutOfMemoryError" in error_str or "out of memory" in error_str or "Allocation on device" in error_str:
+            return jsonify({
+                "error": "Out of VRAM (Video Memory). Lower the resolution, download the GGUF model, or switch to ESRGAN engine.",
+                "error_code": "OUT_OF_VRAM"
+            }), 500
+        
         return jsonify({"error": str(e)}), 500
 
 

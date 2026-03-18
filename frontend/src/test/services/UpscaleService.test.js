@@ -12,13 +12,13 @@ describe('UpscaleService', () => {
     });
   });
 
-  it('upscale calls POST /upscale with source_path', async () => {
+  it('upscale calls POST /upscale with path', async () => {
     const mockResult = { output_path: '/data/liveries/123_4x.tga' };
     upscaleService.post = vi.fn().mockResolvedValueOnce(mockResult);
 
     const result = await upscaleService.upscale('/data/liveries/123.tga');
     expect(upscaleService.post).toHaveBeenCalledWith('/upscale', {
-      source_path: '/data/liveries/123.tga',
+      path: '/data/liveries/123.tga',
     });
     expect(result).toEqual(mockResult);
   });

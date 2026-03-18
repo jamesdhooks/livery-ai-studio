@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { Button } from './Button';
 import { ImageActionTray } from './ImageActionTray';
 import { Modal } from './Modal';
@@ -29,14 +29,21 @@ import upscaleService from '../../services/UpscaleService';
  * @param {Function} [props.onIterate]     - "Modify" handler (modify mode)
  * @param {Function} [props.onRegenerate]   - "Re-generate" handler (new mode, same prompt)
  * @param {Function} [props.onMakeSpec]    - "Make Spec Map" handler
+ * @param {Function} [props.onResample]   - "Resample" handler (load into Upscale tab, Resample mode)
+ * @param {Function} [props.onUpscale]    - "Upscale" handler (load into Upscale tab, Upscale mode)
  * @param {Function} [props.onDelete]      - Delete handler (omit to hide button)
  * @param {boolean}  [props.generating]    - Show generating overlay on image
+ * @param {string}   [props.beforeUrl]      - URL of the "before" image for wipe comparison
+ * @param {boolean}  [props.compareEnabled]  - Whether the before/after wipe is active
+ * @param {Function} [props.onToggleCompare] - Toggle compare mode callback
  * @param {Function} [props.onNotify]      - Toast callback: (message, type) type='success'|'error'|'warning'|'info'
- * @param {Function} [props.onSwitchTab]   - Tab switch callback: (tabName) — 'generate', 'specular'
+ * @param {Function} [props.onSwitchTab]   - Tab switch callback: (tabName) — 'generate', 'specular', 'upscale'
  */
 export function LiveryDetailPanel({
   imageUrl,
   previewUrl,
+  noisedInputUrl,
+  beforeUrl,
   imagePath,
   downloadName = 'livery.png',
   meta = [],
@@ -50,18 +57,48 @@ export function LiveryDetailPanel({
   onIterate,
   onRegenerate,
   onMakeSpec,
+  onResample,
+  onUpscale,
   onDelete,
   generating = false,
+  compareEnabled = false,
+  onToggleCompare,
+  compareSource = 'source',
+  onSetCompareSource,
+  hasNoiseSource = false,
   onNotify,
   onSwitchTab,
 }) {
   const [showConvo, setShowConvo] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
+  const [noiseHovered, setNoiseHovered] = useState(false);
+  // Wipe compare state
+  const [wipePos, setWipePos] = useState(null); // null = mouse outside → show full after
+  const wipeContainerRef = useRef(null);
+  const prevImageUrlRef = useRef(imageUrl);
+  const isFirstRenderRef = useRef(true);
 
-  // Reset imageLoaded when imageUrl changes
+  // Log whenever imageLoaded changes
   React.useEffect(() => {
-    setImageLoaded(false);
+    console.log('[LiveryDetailPanel] imageLoaded changed to:', imageLoaded);
+  }, [imageLoaded]);
+
+  // Reset imageLoaded BEFORE paint when imageUrl TRULY changes (not on first mount)
+  React.useLayoutEffect(() => {
+    if (isFirstRenderRef.current) {
+      isFirstRenderRef.current = false;
+      prevImageUrlRef.current = imageUrl;
+      console.log('[LiveryDetailPanel] First render, not resetting');
+      return;
+    }
+    
+    if (prevImageUrlRef.current !== imageUrl) {
+      console.log('[LiveryDetailPanel] imageUrl truly changed from', prevImageUrlRef.current?.substring(0, 20), 'to', imageUrl?.substring(0, 20), '— resetting imageLoaded');
+      setImageLoaded(false);
+    }
+    prevImageUrlRef.current = imageUrl;
   }, [imageUrl]);
 
   // Extract final resolution from meta (e.g., "2K (2048×2048)" → 2048)
@@ -121,48 +158,179 @@ export function LiveryDetailPanel({
     onLoadAsBase?.();
   };
 
+  const handleWipeMouseMove = useCallback((e) => {
+    const el = wipeContainerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    // clamp 0..1
+    setWipePos(Math.max(0, Math.min(1, x / rect.width)));
+  }, []);
+
+  const handleWipeMouseLeave = useCallback(() => {
+    setWipePos(null);
+  }, []);
+
   return (
     <>
       {/* Preview area — zoom/pan enabled */}
       <div
-        ref={containerRef}
+        ref={(el) => {
+          containerRef.current = el;
+          wipeContainerRef.current = el;
+        }}
         className={`flex-1 flex items-center justify-center p-4 overflow-hidden relative group ${isZoomed ? 'cursor-grab active:cursor-grabbing' : ''}`}
         onMouseDown={zoomHandlers.onMouseDown}
         onDoubleClick={zoomHandlers.onDoubleClick}
+        onMouseMove={(compareEnabled && beforeUrl && imageLoaded) ? handleWipeMouseMove : undefined}
+        onMouseLeave={(compareEnabled && beforeUrl && imageLoaded) ? handleWipeMouseLeave : undefined}
       >
         {(imageUrl || previewUrl) ? (
           <>
-            {/* Blurred preview placeholder — shown behind full-res while loading */}
-            {previewUrl && !imageLoaded && (
+            {/* Blurred preview placeholder — shown behind full-res while loading, fades out when loaded */}
+            {previewUrl && (
               <img
                 src={previewUrl}
                 alt=""
                 aria-hidden
-                className="max-w-full max-h-full rounded shadow-2xl select-none absolute pointer-events-none"
+                className="rounded shadow-2xl select-none absolute pointer-events-none"
                 style={{
-                  transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale * scaleFactor})`,
+                  // Use the captured dimensions of the full-res image to constrain the blurred preview
+                  // This ensures the blurred preview matches the final image size exactly
+                  width: imageDimensions.width || 'auto',
+                  height: imageDimensions.height || 'auto',
+                  maxWidth: '100%',
+                  maxHeight: '100%',
+                  objectFit: 'contain',
+                  transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
                   transformOrigin: 'center center',
                   filter: `blur(${Math.max(4, scaleFactor * 2)}px)`,
-                  opacity: 0.8,
+                  // Fade OUT when imageLoaded becomes true
+                  opacity: imageLoaded ? 0 : 0.8,
+                  transition: 'opacity 400ms ease-out',
+                  pointerEvents: 'none',
+                  zIndex: 1,
                 }}
               />
             )}
-            {/* Full-res image — fades in once loaded */}
+            {/* Full-res "after" image */}
             {imageUrl && (
               <img
                 src={imageUrl}
                 alt="Livery preview"
                 className="max-w-full max-h-full rounded shadow-2xl select-none relative"
-                onLoad={() => setImageLoaded(true)}
+                onLoad={(e) => {
+                  console.log('[LiveryDetailPanel] onLoad fired for imageUrl');
+                  // Capture the rendered dimensions of the full-res image
+                  const img = e.currentTarget;
+                  setImageDimensions({
+                    width: img.clientWidth,
+                    height: img.clientHeight,
+                  });
+                  setImageLoaded(true);
+                }}
+                onError={() => {
+                  console.error('[LiveryDetailPanel] onError fired for imageUrl');
+                  setImageLoaded(true);
+                }}
                 style={{
                   transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
                   transformOrigin: 'center center',
                   transition: isZoomed ? 'none' : 'transform 0.2s ease-out',
-                  opacity: imageLoaded ? 1 : 0,
-                  transitionProperty: 'opacity',
-                  transitionDuration: '400ms',
+                  opacity: 1,
+                  zIndex: 0,
                 }}
               />
+            )}
+            {/* "Before" wipe overlay — clipped in container space via a wrapper div */}
+            {compareEnabled && beforeUrl && imageLoaded && (
+              <div
+                aria-hidden
+                className="absolute inset-0 pointer-events-none overflow-hidden"
+                style={{
+                  // Clip the wrapper to the left of the wipe position (container coordinates)
+                  clipPath: wipePos !== null
+                    ? `inset(0 ${Math.round((1 - wipePos) * 10000) / 100}% 0 0)`
+                    : 'inset(0 100% 0 0)',
+                  zIndex: 2,
+                }}
+              >
+                {/* The before image is explicitly sized to match the after image's rendered dimensions */}
+                <img
+                  src={beforeUrl}
+                  alt="Before"
+                  className="absolute inset-0 m-auto rounded shadow-2xl select-none pointer-events-none"
+                  style={{
+                    width: imageDimensions.width || 'auto',
+                    height: imageDimensions.height || 'auto',
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    objectFit: 'contain',
+                    transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
+                    transformOrigin: 'center center',
+                  }}
+                  onError={() => {}}
+                />
+              </div>
+            )}
+            {/* Wipe divider line + labels */}
+            {compareEnabled && beforeUrl && imageLoaded && wipePos !== null && (
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{ zIndex: 5 }}
+              >
+                {/* Vertical line */}
+                <div
+                  className="absolute top-0 bottom-0 w-px bg-white/80 shadow-[0_0_6px_rgba(0,0,0,0.8)]"
+                  style={{ left: `${wipePos * 100}%` }}
+                />
+                {/* Handle circle */}
+                <div
+                  className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-7 h-7 rounded-full bg-white/90 border border-white shadow-lg flex items-center justify-center"
+                  style={{ left: `${wipePos * 100}%` }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="9 18 3 12 9 6" />
+                    <polyline points="15 6 21 12 15 18" />
+                  </svg>
+                </div>
+                {/* Before label */}
+                {wipePos > 0.08 && (
+                  <div className="absolute top-3 left-3 px-2 py-0.5 rounded bg-black/60 text-[11px] text-white font-medium pointer-events-none">
+                    Before
+                  </div>
+                )}
+                {/* After label */}
+                {wipePos < 0.92 && (
+                  <div className="absolute top-3 right-3 px-2 py-0.5 rounded bg-black/60 text-[11px] text-white font-medium pointer-events-none">
+                    After
+                  </div>
+                )}
+              </div>
+            )}
+            {/* Noise input overlay — shown when hovering noise thumbnail in detail bar */}
+            {noiseHovered && noisedInputUrl && imageLoaded && (
+              <div
+                className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                style={{ zIndex: 4 }}
+              >
+                <img
+                  src={noisedInputUrl}
+                  alt="Noised input"
+                  className="max-w-full max-h-full rounded shadow-2xl select-none"
+                  style={{
+                    width: imageDimensions.width || 'auto',
+                    height: imageDimensions.height || 'auto',
+                    objectFit: 'contain',
+                    transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
+                    transformOrigin: 'center center',
+                  }}
+                />
+                {/* Label */}
+                <div className="absolute top-3 left-3 px-2 py-0.5 rounded bg-black/60 text-[11px] text-white font-medium pointer-events-none" style={{ zIndex: 6 }}>
+                  Noise Input
+                </div>
+              </div>
             )}
             {/* Spinner while loading */}
             {!imageLoaded && (
@@ -187,6 +355,10 @@ export function LiveryDetailPanel({
                 </div>
               </div>
             )}
+            {/* Skeleton placeholder for action tray — prevents layout shift while loading */}
+            {!imageLoaded && (
+              <div className="absolute bottom-2 right-2 h-10 w-40 bg-gradient-to-r from-bg-panel/50 via-bg-hover/30 to-bg-panel/50 rounded-lg border border-border-default/30 animate-pulse" />
+            )}
             <ImageActionTray
               imageUrl={imageUrl}
               imagePath={imagePath}
@@ -194,6 +366,7 @@ export function LiveryDetailPanel({
               onDeploy={onDeploy}
               deploying={deploying}
               deployLabel={deployLabel}
+              onNotify={onNotify}
             />
           </>
         ) : (
@@ -221,11 +394,11 @@ export function LiveryDetailPanel({
       </div>
 
       {/* Action bar */}
-      {(imageUrl || generating) && (
-        <div className="flex-shrink-0 px-3 py-2 flex items-center gap-3 border-t border-border-default bg-bg-panel/50">
+      {(imageUrl || generating) ? (
+        <div className="flex-shrink-0 min-h-10 px-3 py-1.5 flex items-center gap-0 border-t border-border-default bg-bg-panel/50 flex-wrap">
 
-          {/* ── GROUP 1: Deploy ──────────────────────────── */}
-          <div className="flex items-center gap-1.5">
+          {/* ── Deploy ──────────────────────────────────────────────────── */}
+          <div className="flex items-center gap-1.5 pr-3 mr-1">
             <Button
               variant="primary"
               size="sm"
@@ -235,58 +408,110 @@ export function LiveryDetailPanel({
             >
               {deployLabel}
             </Button>
-            {onLoadAsBase && (
-              <Button 
-                variant="secondary" 
-                size="sm" 
-                onClick={handleLoadAsBase} 
-                title="Load as Base: Inserts this livery into the base texture slot and switches to Generate tab. Stays in current mode."
-              >
-                Load as Base
-              </Button>
-            )}
           </div>
 
-          {/* ── GROUP 2: In-app actions ───────────────────── */}
-          {(onIterate || onRegenerate || onMakeSpec) && (
+          {/* ── Generate group ──────────────────────────────────────────── */}
+          {(onLoadAsBase || onIterate || onRegenerate) && (
             <>
               <Divider />
-              <div className="flex items-center gap-1.5">
-                {onIterate && (
-                  <Button 
-                    variant="secondary" 
-                    size="sm" 
-                    onClick={onIterate}
-                    title="Modify: Loads this livery as base texture and switches to Modify mode in Generate tab. Clears prompt/context to iterate freely on the design."
-                  >
-                    Modify
-                  </Button>
-                )}
-                {onRegenerate && (
-                  <Button 
-                    variant="secondary" 
-                    size="sm" 
-                    onClick={onRegenerate}
-                    title="Re-generate: Reloads the original prompt and context in New mode in Generate tab, without a base texture. Regenerates from scratch."
-                  >
-                    Re-generate
-                  </Button>
-                )}
-                {onMakeSpec && (
-                  <Button 
-                    variant="secondary" 
-                    size="sm" 
-                    onClick={onMakeSpec}
-                    title="Make Spec Map: Loads this livery as base texture and switches to Specular tab. Generates a metallic/shininess map for this design."
-                  >
+              <div className="flex items-center gap-0 px-1.5">
+                <TabIcon tab="generate" className="mr-1.5 flex-shrink-0" />
+                <div className="flex items-center gap-0.5">
+                  {onLoadAsBase && (
+                    <ActionTextBtn onClick={handleLoadAsBase} title="Load as Base: Inserts this livery into the base texture slot and switches to Generate tab. Stays in current mode.">
+                      Load as Base
+                    </ActionTextBtn>
+                  )}
+                  {onIterate && (
+                    <ActionTextBtn onClick={onIterate} title="Modify: Loads this livery as base texture and switches to Modify mode in Generate tab. Clears prompt/context to iterate freely on the design.">
+                      Modify
+                    </ActionTextBtn>
+                  )}
+                  {onRegenerate && (
+                    <ActionTextBtn onClick={onRegenerate} title="Re-generate: Reloads the original prompt and context in New mode in Generate tab, without a base texture. Regenerates from scratch.">
+                      Re-generate
+                    </ActionTextBtn>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ── Upscale group ───────────────────────────────────────────── */}
+          {(onUpscale || onResample) && (
+            <>
+              <Divider />
+              <div className="flex items-center gap-0 px-1.5">
+                <TabIcon tab="upscale" className="mr-1.5 flex-shrink-0" />
+                <div className="flex items-center gap-0.5">
+                  {onUpscale && (
+                    <ActionTextBtn onClick={onUpscale} title="Upscale: Loads this livery into the Upscale tab's Upscale mode. Upscales to 2048px using your configured engine.">
+                      Upscale
+                    </ActionTextBtn>
+                  )}
+                  {onResample && (
+                    <ActionTextBtn onClick={onResample} title="Resample: Loads this livery into the Upscale tab's Resample mode. Downres to 1024 then re-upscales to 2048 for a cleaner result.">
+                      Resample
+                    </ActionTextBtn>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ── Specular group ──────────────────────────────────────────── */}
+          {onMakeSpec && (
+            <>
+              <Divider />
+              <div className="flex items-center gap-0 px-1.5">
+                <TabIcon tab="specular" className="mr-1.5 flex-shrink-0" />
+                <div className="flex items-center gap-0.5">
+                  <ActionTextBtn onClick={onMakeSpec} title="Make Spec Map: Loads this livery as base texture and switches to Specular tab. Generates a metallic/shininess map for this design.">
                     Make Spec Map
-                  </Button>
+                  </ActionTextBtn>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ── Compare toggle ──────────────────────────────────────────── */}
+          {onToggleCompare && (
+            <>
+              <Divider />
+              <div className="flex items-center gap-1">
+                <IconBtn
+                  title={compareEnabled ? 'Hide before/after comparison' : 'Show before/after comparison'}
+                  onClick={onToggleCompare}
+                  active={compareEnabled}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <line x1="12" y1="3" x2="12" y2="21" />
+                  </svg>
+                </IconBtn>
+                {compareEnabled && hasNoiseSource && onSetCompareSource && (
+                  <div className="flex items-center rounded border border-border-default overflow-hidden text-[10px]">
+                    <button
+                      onClick={() => onSetCompareSource('source')}
+                      title="Compare against original source image"
+                      className={`px-1.5 py-0.5 transition-colors cursor-pointer ${compareSource === 'source' ? 'bg-accent/20 text-accent' : 'text-text-muted hover:bg-bg-hover'}`}
+                    >
+                      Source
+                    </button>
+                    <button
+                      onClick={() => onSetCompareSource('noise')}
+                      title="Compare against noised downscale input"
+                      className={`px-1.5 py-0.5 transition-colors cursor-pointer ${compareSource === 'noise' ? 'bg-accent/20 text-accent' : 'text-text-muted hover:bg-bg-hover'}`}
+                    >
+                      Noise
+                    </button>
+                  </div>
                 )}
               </div>
             </>
           )}
 
-          {/* ── GROUP 3: Export (icon buttons) ───────────── */}
+          {/* ── Export (icon buttons) ───────────────────────────────────── */}
           {imageUrl && (
             <>
               <Divider />
@@ -341,6 +566,11 @@ export function LiveryDetailPanel({
             </div>
           )}
         </div>
+      ) : (
+        // Skeleton placeholder for action bar — reserves 40px space to prevent layout shift
+        <div className="flex-shrink-0 h-10 px-3 py-2 border-t border-border-default bg-bg-panel/50">
+          <div className="h-6 bg-gradient-to-r from-bg-input/60 via-bg-hover/40 to-bg-input/60 rounded animate-pulse" />
+        </div>
       )}
 
       {/* Detail bar */}
@@ -385,6 +615,25 @@ export function LiveryDetailPanel({
                 ))}
               </div>
             )}
+
+            {/* Noise input thumbnail — hover replaces main preview */}
+            {noisedInputUrl && (
+              <div className="flex-shrink-0 flex flex-col items-center gap-1 self-start">
+                <span className="text-[9px] text-text-muted uppercase tracking-wide">Noise Input</span>
+                <div
+                  className="relative cursor-pointer"
+                  onMouseEnter={() => setNoiseHovered(true)}
+                  onMouseLeave={() => setNoiseHovered(false)}
+                >
+                  <img
+                    src={noisedInputUrl}
+                    alt="Noised downscaled input"
+                    className={`h-10 w-10 object-cover rounded border transition-all ${noiseHovered ? 'border-accent shadow-lg shadow-accent/20' : 'border-border-default'}`}
+                  />
+                  <span className="text-[9px] text-text-muted mt-0.5 block text-center">Hover</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -403,7 +652,44 @@ function Divider() {
   return <div className="w-px h-4 bg-border-default flex-shrink-0" />;
 }
 
-function IconBtn({ title, onClick, children, danger = false }) {
+/** Inline icon matching the nav tab icon for a given tab id. */
+function TabIcon({ tab, className = '' }) {
+  const base = `flex-shrink-0 opacity-60 ${className}`;
+  if (tab === 'generate') return (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className={base}>
+      <path d="M12 2L13.5 9.5L20 12L13.5 14.5L12 22L10.5 14.5L4 12L10.5 9.5L12 2Z" />
+    </svg>
+  );
+  if (tab === 'upscale') return (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className={base}>
+      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+    </svg>
+  );
+  if (tab === 'specular') return (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={base}>
+      {/* Main sphere */}
+      <circle cx="12" cy="12" r="8" />
+      {/* Highlight on top-left */}
+      <ellipse cx="9" cy="8" rx="2" ry="3" />
+    </svg>
+  );
+  return null;
+}
+
+/** Text-only action button for the grouped action bar. */
+function ActionTextBtn({ onClick, title, children }) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      className="px-2 py-1 rounded text-[11px] font-medium text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors cursor-pointer whitespace-nowrap"
+    >
+      {children}
+    </button>
+  );
+}
+
+function IconBtn({ title, onClick, children, danger = false, active = false }) {
   return (
     <button
       title={title}
@@ -411,6 +697,8 @@ function IconBtn({ title, onClick, children, danger = false }) {
       className={`p-1.5 rounded transition-colors cursor-pointer ${
         danger
           ? 'text-text-muted hover:text-error hover:bg-error/10'
+          : active
+          ? 'text-accent bg-accent/15 hover:bg-accent/25'
           : 'text-text-muted hover:text-text-primary hover:bg-bg-hover'
       }`}
     >

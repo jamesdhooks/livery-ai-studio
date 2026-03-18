@@ -14,7 +14,15 @@ import historyService from '../services/HistoryService';
  *   error: string|null,
  *   loadHistory: () => Promise<Array>,
  *   deleteItem: (id: string) => Promise<boolean>,
+ *   trashMany: (ids: string[]) => Promise<boolean>,
  *   getTotalSpend: () => number,
+ *   trashItems: Array<Object>,
+ *   trashCount: number,
+ *   trashLoading: boolean,
+ *   loadTrash: () => Promise<Array>,
+ *   restoreFromTrash: (path: string) => Promise<boolean>,
+ *   restoreManyFromTrash: (paths: string[]) => Promise<boolean>,
+ *   clearTrash: () => Promise<boolean>,
  * }}
  */
 export function useHistory(autoLoad = false) {
@@ -22,22 +30,29 @@ export function useHistory(autoLoad = false) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // ── Trash state ──────────────────────────────────────────────────────────
+  const [trashItems, setTrashItems] = useState([]);
+  const [trashCount, setTrashCount] = useState(0);
+  const [trashLoading, setTrashLoading] = useState(false);
+
+  const _normalize = (raw) =>
+    (raw || []).map(item => ({
+      ...item,
+      id:           item.id || item.filename || item.path,
+      display_name: item.display_name || item.car_folder || item.car || item.name,
+      livery_path:  item.livery_path || item.path,
+      timestamp:    item.timestamp || item.modified || item.generated_at,
+      cost:         item.cost ?? item.estimated_cost ?? null,
+      preview_url:  item.preview_url || (item.preview_jpg
+        ? `/api/uploads/preview?path=${encodeURIComponent(item.preview_jpg)}`
+        : null),
+    }));
+
   const loadHistory = useCallback(async () => {
     try {
       setLoading(true);
-      const raw = await historyService.getHistory();
-      // Normalize API fields to component-expected fields
-      const data = (raw || []).map(item => ({
-        ...item,
-        id:           item.id || item.filename || item.path,
-        display_name: item.display_name || item.car_folder || item.car || item.name,
-        livery_path:  item.livery_path || item.path,
-        timestamp:    item.timestamp || item.modified || item.generated_at,
-        cost:         item.cost ?? item.estimated_cost ?? null,
-        preview_url:  item.preview_url || (item.preview_jpg
-          ? `/api/uploads/preview?path=${encodeURIComponent(item.preview_jpg)}`
-          : null),
-      }));
+      const raw  = await historyService.getHistory();
+      const data = _normalize(raw);
       setItems(data);
       setError(null);
       return data;
@@ -49,10 +64,98 @@ export function useHistory(autoLoad = false) {
     }
   }, []);
 
-  const deleteItem = useCallback(async (id) => {
+  const loadTrash = useCallback(async () => {
     try {
-      await historyService.deleteHistory(id);
-      setItems(prev => prev.filter(item => item.id !== id));
+      setTrashLoading(true);
+      const raw  = await historyService.getTrash();
+      const data = _normalize(raw);
+      setTrashItems(data);
+      setTrashCount(data.length);
+      return data;
+    } catch (e) {
+      setError(e.message);
+      return [];
+    } finally {
+      setTrashLoading(false);
+    }
+  }, []);
+
+  const refreshTrashCount = useCallback(async () => {
+    try {
+      const { count } = await historyService.getTrashCount();
+      setTrashCount(count);
+    } catch { /* ignore */ }
+  }, []);
+
+  /** Soft-delete a single item (move to trash). */
+  const deleteItem = useCallback(async (id) => {
+    const item = items.find(i => i.id === id);
+    const path = item?.livery_path || id;
+    try {
+      await historyService.deleteHistory(path);
+      setItems(prev => prev.filter(i => i.id !== id));
+      setTrashCount(prev => prev + 1);
+      return true;
+    } catch (e) {
+      setError(e.message);
+      return false;
+    }
+  }, [items]);
+
+  /** Soft-delete multiple items (move to trash). */
+  const trashMany = useCallback(async (ids) => {
+    const paths = ids
+      .map(id => items.find(i => i.id === id))
+      .filter(Boolean)
+      .map(i => i.livery_path)
+      .filter(Boolean);
+    if (!paths.length) return false;
+    try {
+      await historyService.trashMany(paths);
+      setItems(prev => prev.filter(i => !ids.includes(i.id)));
+      setTrashCount(prev => prev + paths.length);
+      return true;
+    } catch (e) {
+      setError(e.message);
+      return false;
+    }
+  }, [items]);
+
+  /** Restore a single item from trash. */
+  const restoreFromTrash = useCallback(async (path) => {
+    try {
+      await historyService.restoreFromTrash(path);
+      setTrashItems(prev => prev.filter(i => i.livery_path !== path && i.path !== path));
+      setTrashCount(prev => Math.max(0, prev - 1));
+      // Reload history so restored item appears
+      await loadHistory();
+      return true;
+    } catch (e) {
+      setError(e.message);
+      return false;
+    }
+  }, [loadHistory]);
+
+  /** Restore multiple items from trash. */
+  const restoreManyFromTrash = useCallback(async (paths) => {
+    try {
+      await historyService.restoreManyFromTrash(paths);
+      setTrashItems(prev => prev.filter(i => !paths.includes(i.livery_path) && !paths.includes(i.path)));
+      setTrashCount(prev => Math.max(0, prev - paths.length));
+      await loadHistory();
+      return true;
+    } catch (e) {
+      setError(e.message);
+      return false;
+    }
+  }, [loadHistory]);
+
+  /** Permanently delete all trash. */
+  const clearTrash = useCallback(async () => {
+    try {
+      await historyService.clearTrash();
+      setTrashItems([]);
+      setTrashCount(0);
       return true;
     } catch (e) {
       setError(e.message);
@@ -90,5 +193,27 @@ export function useHistory(autoLoad = false) {
     if (autoLoad) loadHistory();
   }, [autoLoad, loadHistory]);
 
-  return { items, loading, error, loadHistory, deleteItem, updateItemCar, getTotalSpend };
+  // Load trash count on mount
+  useEffect(() => {
+    refreshTrashCount();
+  }, [refreshTrashCount]);
+
+  return {
+    items,
+    loading,
+    error,
+    loadHistory,
+    deleteItem,
+    trashMany,
+    updateItemCar,
+    getTotalSpend,
+    trashItems,
+    trashCount,
+    trashLoading,
+    loadTrash,
+    restoreFromTrash,
+    restoreManyFromTrash,
+    clearTrash,
+  };
 }
+

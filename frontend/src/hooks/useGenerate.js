@@ -26,7 +26,7 @@ import logService from '../services/LogService';
  *   clearError: () => void,
  * }}
  */
-export function useGenerate({ onNotify, onTransaction } = {}) {
+export function useGenerate({ onNotify, onTransaction, onError } = {}) {
   const [generating, setGenerating] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -128,6 +128,15 @@ export function useGenerate({ onNotify, onTransaction } = {}) {
       if (e.name === 'AbortError') return null; // already handled in abort()
       setError(e.message);
       notify('error', `Generation failed: ${e.message}`);
+      
+      // Show service error modal for API errors
+      if (onError) {
+        onError({
+          message: e.message,
+          code: e.code,
+        });
+      }
+      
       // Fire cancelled transaction for failed (non-abort) requests too
       if (onTransaction && currentParamsRef.current) {
         onTransaction({ amount: currentParamsRef.current.estimatedCost ?? 0, type: 'cancelled', model: params.model });
@@ -141,7 +150,7 @@ export function useGenerate({ onNotify, onTransaction } = {}) {
       setElapsedSeconds(0);
       setGenerating(false);
     }
-  }, [generating, startTimer, stopTimer, notify, onTransaction]);
+  }, [generating, startTimer, stopTimer, notify, onTransaction, onError]);
 
   const uploadFile = useCallback(async (category, file, meta = {}) => {
     try {

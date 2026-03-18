@@ -400,18 +400,21 @@ def generate_livery(
     print(f"[generate_livery] Raw image size from model: {generated_image.size}")
 
     # Upscale with Real-ESRGAN, or fall back to simple Lanczos resize
+    upscale_succeeded = False
     if upscale:
         try:
             from server.upscale import upscale_to_2048, is_available
             if is_available():
                 print("[generate_livery] Running Real-ESRGAN upscale …")
                 generated_image = upscale_to_2048(generated_image)
+                upscale_succeeded = True
+                print("[generate_livery] Real-ESRGAN upscale succeeded")
             else:
                 print("[generate_livery] WARNING: upscale requested but Real-ESRGAN not available — falling back to Lanczos")
                 if generated_image.size != (2048, 2048):
                     generated_image = generated_image.resize((2048, 2048), Image.LANCZOS)
         except Exception as e:
-            print(f"[generate_livery] Upscale failed ({e}) — falling back to Lanczos")
+            print(f"[generate_livery] ERROR: Upscale failed ({e}) — falling back to Lanczos resize (livery will be saved with non-upscaled metadata)")
             if generated_image.size != (2048, 2048):
                 generated_image = generated_image.resize((2048, 2048), Image.LANCZOS)
     else:
@@ -427,7 +430,7 @@ def generate_livery(
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     generated_image.save(output_path, format="TGA")
     print(f"[generate_livery] Saved → {output_path}")
-    return output_path, conversation_log
+    return output_path, conversation_log, upscale_succeeded
 
 
 # ─── Specular map generation ──────────────────────────────────────────────────

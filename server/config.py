@@ -54,6 +54,9 @@ DEFAULT_CONFIG: dict = {
     "starred_cars": [],
     # Upscale engine preference: "realesrgan" (default) or "seedvr2"
     "upscale_engine": "realesrgan",
+    # SeedVR2 options
+    "seedvr2_use_gguf": True,    # Use GGUF quantized model for lower VRAM usage
+    "seedvr2_multi_gpu": False,  # Enable multi-GPU mode when multiple GPUs are detected
 }
 
 

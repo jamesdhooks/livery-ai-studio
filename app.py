@@ -13,7 +13,6 @@ import os
 import sys
 import threading
 import traceback
-from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 from flask import Flask, send_file, send_from_directory
@@ -30,9 +29,18 @@ _APP_DIR_EARLY: Path = (
 )
 _LOG_PATH = _APP_DIR_EARLY / "app.log"
 
-_log_handler = RotatingFileHandler(
-    _LOG_PATH, maxBytes=1_000_000, backupCount=2, encoding="utf-8"
-)
+# Plain FileHandler — RotatingFileHandler causes PermissionError 32 on Windows
+# when multiple threads hold app.log open during os.rename. Instead, truncate
+# the log at startup if it exceeds 1 MB (keeps the last ~50 KB of context).
+_LOG_MAX_BYTES = 1_000_000
+if _LOG_PATH.exists() and _LOG_PATH.stat().st_size > _LOG_MAX_BYTES:
+    try:
+        tail = _LOG_PATH.read_bytes()[-50_000:]
+        _LOG_PATH.write_bytes(tail)
+    except OSError:
+        pass
+
+_log_handler = logging.FileHandler(_LOG_PATH, encoding="utf-8")
 _log_handler.setFormatter(logging.Formatter(
     "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
@@ -111,6 +119,30 @@ from server.routes.api_window   import bp as bp_window
 
 logger.info("All imports OK")
 
+# ── Ensure SeedVR2 GGUF model is present ──────────────────────────────────────
+# If start.bat --seedvr didn't download it, do it now before Flask starts
+_seedvr_repo_dir = APP_DIR / "seedvr2_videoupscaler"
+_gguf_file = _seedvr_repo_dir / "seedvr2_ema_3b-Q8_0.gguf"
+
+if _seedvr_repo_dir.exists() and not _gguf_file.exists():
+    logger.info("[GGUF] Repository exists but model missing — attempting download...")
+    try:
+        import subprocess
+        _download_script = APP_DIR / "download_gguf.py"
+        if _download_script.exists():
+            logger.info("[GGUF] Running download script...")
+            _result = subprocess.run(
+                [sys.executable, str(_download_script), str(_seedvr_repo_dir)],
+                capture_output=False,
+                timeout=3600,  # 1 hour timeout
+            )
+            if _result.returncode == 0:
+                logger.info("[GGUF] Download completed successfully")
+            else:
+                logger.warning("[GGUF] Download script exited with code %d", _result.returncode)
+    except Exception as _e:
+        logger.warning("[GGUF] Failed to download GGUF model on app startup: %s", _e)
+
 # ── Create Flask app ──────────────────────────────────────────────────────────
 app = Flask(__name__, static_folder=str(STATIC_DIR))
 
@@ -118,6 +150,35 @@ for _bp in (bp_config, bp_cars, bp_files, bp_generate, bp_history, bp_window):
     app.register_blueprint(_bp)
 
 logger.info("Flask blueprints registered")
+
+# ── Startup: Purge expired trash items ───────────────────────────────────────
+try:
+    from server.routes.api_history import get_trash_dir, TRASH_RETENTION_SECONDS
+    import json as _json
+    import time as _time
+
+    _trash_dir = get_trash_dir()
+    _now       = _time.time()
+    _purged    = 0
+    for _sidecar in _trash_dir.glob("*.json"):
+        try:
+            _meta = _json.loads(_sidecar.read_text(encoding="utf-8"))
+            _td   = _meta.get("trash_date", 0)
+            if _td and (_now - _td) >= TRASH_RETENTION_SECONDS:
+                _stem = _sidecar.stem
+                for _sfx in (".tga", ".json", ".jpg"):
+                    _f = _trash_dir / (_stem + _sfx)
+                    if _f.exists(): _f.unlink()
+                for _extra in (_stem + "_preview.jpg", _stem + "_upscaled.tga"):
+                    _f = _trash_dir / _extra
+                    if _f.exists(): _f.unlink()
+                _purged += 1
+        except Exception:
+            pass
+    if _purged:
+        logger.info("Purged %d expired trash item(s) on startup", _purged)
+except Exception as _e:
+    logger.warning("Trash cleanup on startup failed: %s", _e)
 
 # ── Startup: Backfill spending log from existing history ─────────────────────
 try:
@@ -200,7 +261,10 @@ def _apply_app_user_model_id():
 def start_flask():
     port = int(os.environ.get("FLASK_PORT", "6173"))
     logger.info("Flask starting on http://127.0.0.1:%d", port)
-    app.run(host="127.0.0.1", port=port, debug=False, use_reloader=False)
+    try:
+        app.run(host="127.0.0.1", port=port, debug=False, use_reloader=False)
+    except Exception:
+        logger.exception("Flask failed to start")
 
 
 # ── Main entry point ──────────────────────────────────────────────────────────
@@ -236,8 +300,12 @@ def main():
         logger.info("Launching in browser (web-only mode)")
         import webbrowser
         webbrowser.open(f"http://127.0.0.1:{port}")
-        # Keep Flask running (already started in background thread above)
-        server.join()
+        # Block the main thread so the daemon Flask thread stays alive.
+        # threading.Event().wait() blocks until interrupted (Ctrl+C or window close).
+        try:
+            threading.Event().wait()
+        except KeyboardInterrupt:
+            logger.info("Shutting down…")
     else:
         os.environ['PYWEBVIEW_ICON'] = ico
 

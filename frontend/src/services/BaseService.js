@@ -60,13 +60,17 @@ export class BaseService {
     
     if (!response.ok) {
       let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      let errorCode = response.status;
       try {
         const errorData = await response.json();
         errorMessage = errorData.error || errorData.message || errorMessage;
+        if (errorData.error_code) errorCode = errorData.error_code;
       } catch {
         // ignore JSON parse error
       }
-      throw new Error(errorMessage);
+      const error = new Error(errorMessage);
+      error.code = errorCode;
+      throw error;
     }
 
     const contentType = response.headers.get('content-type');

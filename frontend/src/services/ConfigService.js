@@ -37,6 +37,18 @@ class ConfigService extends BaseService {
   async wipeData(confirmation) {
     return this.post('/wipe-data', { confirmation });
   }
+
+  /**
+   * Fetch upscale engine availability and GGUF model status.
+   * @returns {Promise<Object>} Status object with:
+   *   - realesrgan_available: boolean
+   *   - seedvr2_available: boolean
+   *   - gguf_available: boolean
+   *   - gguf_path: string (path to GGUF model if SeedVR2 installed)
+   */
+  async getUpscaleStatus() {
+    return this.get('/upscale-status');
+  }
 }
 
 export default new ConfigService();

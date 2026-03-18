@@ -136,8 +136,8 @@ export function SpecularTab({
       car_folder: selectedCar || '',
       wireframe_path: wireframePath,
       livery_path: liveryPath,
+      model,
       resolution_2k: model === 'pro' || is2K,
-      use_fast_model: model === 'flash',
       customer_id: customerId,
       auto_deploy: false,
     });

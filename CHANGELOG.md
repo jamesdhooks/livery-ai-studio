@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.9.2-beta] — 2026-03-18
+
+### Added
+- **SeedVR2 diffusion resample** — New Resample mode in the Upscale tab alongside Real-ESRGAN 4×; downscales to 1024×1024, runs SeedVR2 diffusion upscale, outputs 2048×2048. Segmented mode control mirrors New/Modify pattern in GenerateTab
+- **GGUF low-VRAM support** — `server/seedvr2.py` detects and uses GGUF quantized model when available, reducing VRAM requirements; `download_gguf.py` script downloads the 2.4 GB Q8_0 model with progress bar
+- **Upscale Engine setting** — When SeedVR2 is available, Settings tab shows a toggle to choose between Real-ESRGAN (fast) and SeedVR2 (high quality) for auto-upscale after generation; persists as `upscale_engine` in config
+- **`start.bat --seedvr` flag** — Clones `ComfyUI-SeedVR2_VideoUpscaler`, installs SeedVR2 dependencies and torch; works standalone or combined with `--gpu`
+- **Specular tab** — Full spec map generation workflow using Gemini: prompt, reference image upload, model/resolution picker, generation progress, deploy to iRacing
+- **Persistent spending log** — `server/spending.py` records every API transaction to `data/spending_log.json` with backfill migration from existing history sidecars; SpendingModal shows filterable history (today / week / overall)
+- **Toast notification system** — `useToast` + `Toast` component + `ToastContext`; replaces ad-hoc `onNotify` prop callbacks app-wide
+- **Generation progress component** — Real-time elapsed timer + animated progress bar during generation
+- **ModelSelector component** — Shared model/resolution picker used in GenerateTab and SpecularTab
+- **History sidebar filters** — Merged filter + select bars into single compact topbar; filter by current car or badge (Spec, 2K, Upscaled, etc.); select mode for bulk delete; active filter pills
+- **Upscale/Resample metadata inheritance** — `/api/upscale` and `/api/resample` inherit source livery sidecar metadata (prompt, mode, model, car, customer_id, conversation_log, etc.) so results are properly associated in history
+- **`seedvr_available` capability** — Exposed in `/api/config` GET response so the frontend can conditionally show SeedVR2 UI
+- **`/api/resample` endpoint** — Mirrors `/api/upscale` pattern; saves `_resampled.tga`, updates sidecar JSON, returns `preview_b64`
+
+### Changed
+- **React Context architecture** — Eliminated prop drilling throughout the app by introducing a 9-provider context layer (AppProvider, ConfigContext, SessionContext, CarsContext, GenerationPrefsContext, HistoryContext, SpendingContext, GenerateContext, UpscaleContext, SpecularContext, ToastContext). Tab prop counts reduced from 8–40 props down to 0–12
+- **App.jsx** — Rewritten from 541 to ~280 lines; no longer calls hooks directly for shared state
+- **Two-bag modeState** — Separate session state bags for New vs Modify modes prevent cross-mode bleed on tab switch; debounced via `debouncedSaveModeState`
+- **Loading screen** — Converted from early return to fixed overlay (z-[9999]) to enable CSS fade-out transition; 2-second minimum display time; HTML and React loading screens coordinate fade and unmount together
+- **Flask port** — Changed from 5199 → 6173 to avoid Vite dev server collision
+- **FileUploader** — Loading spinner and red X clear button; fixed heights (`h-48`) on upload containers
+- **Improved specular icon** — Polished sphere with reflection highlight in both TopBar nav and LiveryDetailPanel action bar
+- **`start.bat`** — Refactored with `goto` labels and `taskkill` for proper Ctrl+C handling; added `--build-frontend` and `--gpu` flags
+
+### Fixed
+- **"Iterate on This" flow** — Clicking Iterate on This from GenerateTab now correctly switches to Modify mode and applies the base texture; previously the session path was saved but never applied to the active form state
+- **`UpscaleService.upscale()`** — Fixed to send `path` key (matching backend expectation) instead of `source_path`
+- **Deploy endpoint null safety** — `/api/deploy` no longer throws AttributeError when request body or fields are missing
+- **Test suite** — Updated `HistoryService` and `UpscaleService` tests to match actual API method signatures
+
+---
+
 ## [0.9.1-beta] — 2026-03-16
 
 ### Fixed

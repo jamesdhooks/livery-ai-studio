@@ -203,7 +203,8 @@ def api_uploads_preview():
         return jsonify({"error": "Path must be absolute"}), 400
 
     allowed = False
-    for base in (get_data_dir(), LIBRARY_DIR):
+    temp_uploads = Path(tempfile.gettempdir()) / "iracing_livery_uploads"
+    for base in (get_data_dir(), LIBRARY_DIR, temp_uploads):
         try:
             p.relative_to(base)
             allowed = True

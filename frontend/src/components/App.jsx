@@ -12,6 +12,7 @@ import { CarsTab } from './tabs/CarsTab';
 import { SamplePromptsModal } from './modals/SamplePromptsModal';
 import { SpendingModal } from './modals/SpendingModal';
 import { PromptHistoryModal } from './modals/PromptHistoryModal';
+import { ServiceErrorModal } from './modals/ServiceErrorModal';
 import { useConfigContext } from '../context/ConfigContext';
 import { useSessionContext } from '../context/SessionContext';
 import { useCarsContext } from '../context/CarsContext';
@@ -20,6 +21,7 @@ import { useHistoryContext } from '../context/HistoryContext';
 import { useSpendingContext } from '../context/SpendingContext';
 import { useUpscaleContext } from '../context/UpscaleContext';
 import { useSpecularContext } from '../context/SpecularContext';
+import { useServiceError } from '../hooks/useServiceError';
 import { useTheme } from '../hooks/useTheme';
 import generateService from '../services/GenerateService';
 import upscaleService from '../services/UpscaleService';
@@ -46,6 +48,9 @@ function App() {
   const [injectedPrompt, setInjectedPrompt] = useState(null);
   const [iteratePath, setIteratePath] = useState(null);
   const [regenerateData, setRegenerateData] = useState(null);
+  // Upscale/Resample injection state (from history/generate → UpscaleTab)
+  const [resamplePath, setResamplePath] = useState(null);
+  const [upscalePath, setUpscalePath] = useState(null);
 
   // ── Contexts ──────────────────────────────────────────────────────────────
   const { config, loading: configLoading, saveConfig } = useConfigContext();
@@ -70,7 +75,7 @@ function App() {
   useEffect(() => {
     if (!configLoading && !carsLoading) {
       const elapsed = Date.now() - loadingStartTimeRef.current;
-      const MIN_TOTAL_TIME = 2000; // 2 seconds minimum from page load
+      const MIN_TOTAL_TIME = 1000; // 1 second minimum from page load
       const remainingTime = Math.max(0, MIN_TOTAL_TIME - elapsed);
 
       const timer = setTimeout(() => {
@@ -79,8 +84,8 @@ function App() {
         if (window.hideLoadingScreen) {
           window.hideLoadingScreen();
         }
-        // Step 2: remove from DOM after the 0.6s CSS transition completes
-        setTimeout(() => setLoadingMounted(false), 600);
+        // Step 2: remove from DOM after the 0.3s CSS transition completes
+        setTimeout(() => setLoadingMounted(false), 300);
       }, remainingTime);
       return () => clearTimeout(timer);
     }
@@ -184,6 +189,16 @@ function App() {
     setActiveTab('specular');
   }, [setSelectedCar, setBaseOverride, saveSession]);
 
+  const handleNavigateToResample = useCallback((liveryPath) => {
+    setResamplePath(liveryPath);
+    setActiveTab('upscale');
+  }, []);
+
+  const handleNavigateToUpscale = useCallback((liveryPath) => {
+    setUpscalePath(liveryPath);
+    setActiveTab('upscale');
+  }, []);
+
   // ── App loading splash ────────────────────────────────────────────────────
   // NOTE: rendered as a fixed overlay (not an early return) so we can fade it out with CSS.
 
@@ -194,7 +209,7 @@ function App() {
       {loadingMounted && (
         <div
           style={{
-            transition: 'opacity 0.6s ease-out',
+            transition: 'opacity 0.3s ease-out',
             opacity: loadingVisible ? 1 : 0,
             pointerEvents: loadingVisible ? 'auto' : 'none',
           }}
@@ -244,32 +259,49 @@ function App() {
       {/* Tab panels */}
       <main className="flex-1 overflow-hidden">
         {activeTab === 'generate' && !carsLoading && (
-          <GenerateTab
-            capabilities={capabilities}
-            injectedPrompt={injectedPrompt}
-            onInjectedPromptUsed={() => setInjectedPrompt(null)}
-            onEnhancePrompt={handleEnhancePrompt}
-            iteratePath={iteratePath}
-            onIteratePathUsed={() => setIteratePath(null)}
-            regenerateData={regenerateData}
-            onRegenerateDataUsed={() => setRegenerateData(null)}
-            onNavigateToSpecular={() => setActiveTab('specular')}
-            onOpenSamplePrompts={() => setShowSamplePrompts(true)}
-            onOpenPromptHistory={() => setShowPromptHistory(true)}
-          />
+          <div className="h-full overflow-hidden">
+            <GenerateTab
+              capabilities={capabilities}
+              injectedPrompt={injectedPrompt}
+              onInjectedPromptUsed={() => setInjectedPrompt(null)}
+              onEnhancePrompt={handleEnhancePrompt}
+              iteratePath={iteratePath}
+              onIteratePathUsed={() => setIteratePath(null)}
+              regenerateData={regenerateData}
+              onRegenerateDataUsed={() => setRegenerateData(null)}
+              onNavigateToSpecular={() => setActiveTab('specular')}
+              onNavigateToUpscale={handleNavigateToUpscale}
+              onNavigateToResample={handleNavigateToResample}
+              onOpenSamplePrompts={() => setShowSamplePrompts(true)}
+              onOpenPromptHistory={() => setShowPromptHistory(true)}
+            />
+          </div>
         )}
         {activeTab === 'history' && (
-          <HistoryTab
-            onIterateFrom={handleIterateFrom}
-            onRegenerateFrom={handleRegenerateFrom}
-            onNavigateToSpecular={handleNavigateToSpecular}
-            onSwitchTab={setActiveTab}
-          />
+          <div className="h-full overflow-hidden">
+            <HistoryTab
+              onIterateFrom={handleIterateFrom}
+              onRegenerateFrom={handleRegenerateFrom}
+              onNavigateToSpecular={handleNavigateToSpecular}
+              onNavigateToResample={handleNavigateToResample}
+              onNavigateToUpscale={handleNavigateToUpscale}
+              onSwitchTab={setActiveTab}
+            />
+          </div>
         )}
         {activeTab === 'upscale' && (
-          <UpscaleTab
-            capabilities={capabilities}
-          />
+          <div className="h-full overflow-hidden">
+            <UpscaleTab
+              capabilities={capabilities}
+              initialPath={upscalePath || resamplePath}
+              initialMode={upscalePath ? 'upscale' : resamplePath ? 'resample' : undefined}
+              onInitialConsumed={() => { setResamplePath(null); setUpscalePath(null); }}
+              onIterateFrom={handleIterateFrom}
+              onRegenerateFrom={handleRegenerateFrom}
+              onNavigateToSpecular={handleNavigateToSpecular}
+              onSwitchTab={setActiveTab}
+            />
+          </div>
         )}
         <div className={activeTab === 'cars' ? 'h-full overflow-hidden' : 'hidden'}>
           <CarsTab
@@ -278,9 +310,11 @@ function App() {
         </div>
         {activeTab === 'sponsors' && <SponsorsTab />}
         {activeTab === 'specular' && (
-          <SpecularTab
-            capabilities={capabilities}
-          />
+          <div className="h-full overflow-hidden">
+            <SpecularTab
+              capabilities={capabilities}
+            />
+          </div>
         )}
         {activeTab === 'settings' && (
           <SettingsTab capabilities={capabilities} />
@@ -317,8 +351,19 @@ function App() {
           setShowPromptHistory(false);
         }}
       />
+
+      <ServiceErrorModalWrapper />
     </div>
   );
+}
+
+/**
+ * ServiceErrorModalWrapper — uses the service error context to display error modals.
+ * Separated into a sub-component to use the context hook.
+ */
+function ServiceErrorModalWrapper() {
+  const { error, isOpen, closeError } = useServiceError();
+  return <ServiceErrorModal isOpen={isOpen} onClose={closeError} error={error} />;
 }
 
 export default App;

@@ -7,6 +7,7 @@ const CATEGORY_TITLES = {
   wire: 'Browse Wireframes',
   base: 'Browse Base Textures',
   reference: 'Browse Reference Images',
+  upscale: 'Browse Previous Upscales',
 };
 
 // ─── Icons ───────────────────────────────────────────────────────────────────

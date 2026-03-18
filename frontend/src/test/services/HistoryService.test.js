@@ -21,17 +21,17 @@ describe('HistoryService', () => {
     expect(result).toEqual(mockItems);
   });
 
-  it('deleteHistory calls DELETE /history/{id}', async () => {
-    historyService.delete = vi.fn().mockResolvedValueOnce({ ok: true });
+  it('deleteHistory calls POST /history/delete with path', async () => {
+    historyService.post = vi.fn().mockResolvedValueOnce({ ok: true });
 
-    const result = await historyService.deleteHistory('abc-123');
-    expect(historyService.delete).toHaveBeenCalledWith('/history/abc-123');
+    const result = await historyService.deleteHistory('/data/liveries/abc-123.tga');
+    expect(historyService.post).toHaveBeenCalledWith('/history/delete', { path: '/data/liveries/abc-123.tga' });
     expect(result).toEqual({ ok: true });
   });
 
-  it('deleteHistory uses the provided id in the path', async () => {
-    historyService.delete = vi.fn().mockResolvedValueOnce({ ok: true });
-    await historyService.deleteHistory('xyz-789');
-    expect(historyService.delete).toHaveBeenCalledWith('/history/xyz-789');
+  it('deleteHistory uses the provided path in the request', async () => {
+    historyService.post = vi.fn().mockResolvedValueOnce({ ok: true });
+    await historyService.deleteHistory('/data/liveries/xyz-789.tga');
+    expect(historyService.post).toHaveBeenCalledWith('/history/delete', { path: '/data/liveries/xyz-789.tga' });
   });
 });

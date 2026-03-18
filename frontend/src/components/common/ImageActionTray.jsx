@@ -12,7 +12,7 @@ import upscaleService from '../../services/UpscaleService';
  * @param {string}   [props.downloadName] - Filename for the download (default "livery.png")
  * @param {Function} [props.onDeploy]     - If provided, shows a Deploy button
  * @param {boolean}  [props.deploying]    - Loading state for deploy
-
+ * @param {Function} [props.onNotify]     - Toast callback: (message, type)
  * @param {string}   [props.className]    - Extra wrapper classes
  */
 export function ImageActionTray({
@@ -21,6 +21,7 @@ export function ImageActionTray({
   downloadName = 'livery.png',
   onDeploy,
   deploying,
+  onNotify,
   className = '',
 }) {
   const handleCopy = async () => {
@@ -29,9 +30,15 @@ export function ImageActionTray({
       const res = await fetch(imageUrl);
       const blob = await res.blob();
       await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+      onNotify?.('Image copied to clipboard', 'success');
     } catch {
       // Fallback — copy URL text
-      try { await navigator.clipboard.writeText(imageUrl); } catch { /* ignore */ }
+      try { 
+        await navigator.clipboard.writeText(imageUrl);
+        onNotify?.('Image link copied to clipboard', 'success');
+      } catch { 
+        onNotify?.('Failed to copy image', 'error');
+      }
     }
   };
 
@@ -41,13 +48,17 @@ export function ImageActionTray({
     a.href = imageUrl;
     a.download = downloadName;
     a.click();
+    onNotify?.('Download started', 'success');
   };
 
   const handleOpenExplorer = async () => {
     if (!imagePath) return;
     try {
       await upscaleService.openExplorer(imagePath);
-    } catch { /* ignore */ }
+      onNotify?.('Folder opened', 'success');
+    } catch { 
+      onNotify?.('Could not open folder', 'error');
+    }
   };
 
   return (

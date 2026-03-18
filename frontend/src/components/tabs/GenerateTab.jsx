@@ -72,6 +72,8 @@ export function GenerateTab({
   regenerateData,
   onRegenerateDataUsed,
   onNavigateToSpecular,
+  onNavigateToUpscale,
+  onNavigateToResample,
   onOpenSamplePrompts,
   onOpenPromptHistory,
 }) {
@@ -736,7 +738,14 @@ export function GenerateTab({
           {/* Auto-upscale toggle */}
           {showUpscaleToggle && (
             <div className="flex items-center justify-between">
-              <span className="text-[13px] text-text-secondary flex items-center gap-1">Auto-upscale 1K→2K <InfoTooltip position="right" maxWidth={280} text="After generating at 1K, runs Real-ESRGAN 4× upscaling on your NVIDIA GPU to produce a crisp 2048×2048 texture. The cheapest way to get 2K-quality results (~$0.067 with GPU vs ~$0.101 for Flash 2K)." /></span>
+              <span className="text-[13px] text-text-secondary flex items-center gap-1">
+                Auto-upscale 1K→2K 
+                <InfoTooltip 
+                  position="right" 
+                  maxWidth={280} 
+                  text={`After generating at 1K, runs ${config?.upscale_engine === 'seedvr2' ? 'SeedVR2' : 'Real-ESRGAN'} ${config?.upscale_engine === 'seedvr2' ? 'upsampling' : '4× upscaling'} on your ${config?.upscale_engine === 'seedvr2' ? 'GPU' : 'NVIDIA GPU'} to produce a crisp 2048×2048 texture. The cheapest way to get 2K-quality results (~$0.067 with GPU vs ~$0.101 for Flash 2K).`}
+                />
+              </span>
               <Toggle checked={autoUpscale} onChange={onAutoUpscaleChange} id="upscaleResult" size="sm" />
             </div>
           )}
@@ -810,6 +819,12 @@ export function GenerateTab({
           onMakeSpec={lastResult?.livery_path ? () => {
             setBaseOverride?.(lastResult.livery_path);
             onNavigateToSpecular?.();
+          } : undefined}
+          onUpscale={lastResult?.livery_path ? () => {
+            onNavigateToUpscale?.(lastResult.livery_path);
+          } : undefined}
+          onResample={lastResult?.livery_path ? () => {
+            onNavigateToResample?.(lastResult.livery_path);
           } : undefined}
           generating={generating}
           onNotify={() => {}} 

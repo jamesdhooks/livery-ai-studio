@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { ImageActionTray } from '../common/ImageActionTray';
 import { LiveryDetailPanel } from '../common/LiveryDetailPanel';
+import { HistoryFilters } from '../common/HistoryFilters';
 import { formatTimestamp } from '../../utils/helpers';
 import upscaleService from '../../services/UpscaleService';
 import { getFilename } from '../../utils/helpers';
@@ -10,17 +11,26 @@ import { useUpscaleContext } from '../../context/UpscaleContext';
 import { useSpecularContext } from '../../context/SpecularContext';
 import { useConfigContext } from '../../context/ConfigContext';
 import { useToastContext } from '../../context/ToastContext';
+import { Modal } from '../common/Modal';
+import { Button } from '../common/Button';
 
 
 export function HistoryTab({
   onIterateFrom,
   onRegenerateFrom,
   onNavigateToSpecular,
+  onNavigateToResample,
+  onNavigateToUpscale,
   onSwitchTab,
 }) {
   // ── Contexts ─────────────────────────────────────────────────────────────
-  const { items, loading, loadHistory, deleteItem: onDelete, updateItemCar: onUpdateItemCar } = useHistoryContext();
-  const { cars, setBaseOverride } = useCarsContext();
+  const {
+    items, loading, loadHistory,
+    deleteItem: onDelete,
+    trashMany,
+    updateItemCar: onUpdateItemCar,
+  } = useHistoryContext();
+  const { cars, setBaseOverride, selectedCar } = useCarsContext();
   const { deploy: deployTexture, deploying } = useUpscaleContext();
   const { deploySpec } = useSpecularContext();
   const { config } = useConfigContext();
@@ -36,32 +46,98 @@ export function HistoryTab({
   const onLoadAsBase = useCallback((path) => {
     setBaseOverride(path);
   }, [setBaseOverride]);
+
   const [selectedId, setSelectedId] = useState(null);
   const [fullResUrl, setFullResUrl] = useState(null);
   const [loadingFullRes, setLoadingFullRes] = useState(false);
   const [editingCar, setEditingCar] = useState(false);
   const [carSearch, setCarSearch] = useState('');
   const carDropdownRef = useRef(null);
+  const scrollContainerRef = useRef(null);
+  const scrollRestoredRef = useRef(false);
+
+  // ── Multi-select state ────────────────────────────────────────────────────
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [showTrashConfirm, setShowTrashConfirm] = useState(false);
+  const [trashing, setTrashing] = useState(false);
+
+  // ── Filter state ──────────────────────────────────────────────────────────
+  const [filterCurrentCarOnly, setFilterCurrentCarOnly] = useState(false);
+  const [filterBadges, setFilterBadges] = useState([]);
+
+  const addBadgeFilter = useCallback((badge) => {
+    setFilterBadges(prev => prev.includes(badge) ? prev : [...prev, badge]);
+  }, []);
+
+  const removeBadgeFilter = useCallback((badge) => {
+    setFilterBadges(prev => prev.filter(b => b !== badge));
+  }, []);
+
+  // Apply filters to items
+  const filteredItems = items?.filter(item => {
+    // Car filter (current car only toggle)
+    if (filterCurrentCarOnly && selectedCar && item.car_folder !== selectedCar) return false;
+
+    // Badge filters (all selected badges must match)
+    for (const badge of filterBadges) {
+      let matches = false;
+      switch (badge) {
+        case 'spec':
+          matches = item.entry_type === 'spec' || item.mode === 'spec';
+          break;
+        case 'pro':
+          matches = item.model?.toLowerCase().includes('pro');
+          break;
+        case 'flash':
+          matches = item.model?.toLowerCase().includes('flash');
+          break;
+        case '2k':
+          matches = item.resolution_2k;
+          break;
+        case '1k':
+          matches = !item.resolution_2k;
+          break;
+        case 'modify':
+          matches = item.mode === 'modify';
+          break;
+        case 'iterate':
+          matches = item.mode === 'iterate';
+          break;
+        case 'upscaled':
+          matches = item.upscaled;
+          break;
+        case 'resampled':
+          matches = item.resampled;
+          break;
+        default:
+          break;
+      }
+      if (!matches) return false;
+    }
+
+    return true;
+  }) || [];
 
   useEffect(() => {
     onLoad?.();
   }, []);
 
-  // Auto-select first item when items load, or pick up a focus request
+  // Auto-select first filtered item when filtered items load, or pick up a focus request
   useEffect(() => {
-    if (!items?.length) return;
+    if (!filteredItems?.length) return;
     try {
       const focusId = sessionStorage.getItem('history-focus-id');
       if (focusId) {
         sessionStorage.removeItem('history-focus-id');
-        const target = items.find((i) => i.id === focusId);
+        const target = filteredItems.find((i) => i.id === focusId);
         if (target) { setSelectedId(focusId); return; }
       }
     } catch { /* ignore */ }
-    if (!selectedId) setSelectedId(items[0].id);
-  }, [items]);
+    if (!selectedId) setSelectedId(filteredItems[0].id);
+  }, [filteredItems]);
 
-  const selectedItem = items?.find((i) => i.id === selectedId) || null;
+  const selectedItem = filteredItems?.find((i) => i.id === selectedId) || null;
 
   // Load full-res TGA preview when selected item changes
   const loadFullRes = useCallback(async (item) => {
@@ -83,11 +159,35 @@ export function HistoryTab({
 
   useEffect(() => {
     if (selectedItem) {
+      setFullResUrl(null);
       loadFullRes(selectedItem);
     } else {
       setFullResUrl(null);
     }
   }, [selectedId, selectedItem?.livery_path]);
+
+  // ── Scroll position persistence ────────────────────────────────────────────
+  // Restore scroll position after items load
+  useEffect(() => {
+    if (scrollRestoredRef.current || !filteredItems?.length) return;
+    scrollRestoredRef.current = true;
+    const saved = localStorage.getItem('history-scroll-top');
+    if (saved && scrollContainerRef.current) {
+      // Defer to ensure DOM has rendered the cards
+      requestAnimationFrame(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTop = Number(saved);
+        }
+      });
+    }
+  }, [filteredItems]);
+
+  // Save scroll position on scroll
+  const handleScrollSave = useCallback(() => {
+    if (scrollContainerRef.current) {
+      localStorage.setItem('history-scroll-top', String(scrollContainerRef.current.scrollTop));
+    }
+  }, []);
 
   // Close car edit dropdown on click outside
   useEffect(() => {
@@ -105,6 +205,11 @@ export function HistoryTab({
   // Reset edit state when selection changes
   useEffect(() => { setEditingCar(false); setCarSearch(''); }, [selectedId]);
 
+  // Clear selections when exiting select mode
+  useEffect(() => {
+    if (!selectMode) setSelectedIds(new Set());
+  }, [selectMode]);
+
   const handleCarSelect = useCallback(async (carFolder, carDisplay) => {
     if (!selectedItem) return;
     const ok = await onUpdateItemCar?.(selectedItem.id, carFolder, carDisplay);
@@ -113,6 +218,35 @@ export function HistoryTab({
       setCarSearch('');
     }
   }, [selectedItem, onUpdateItemCar]);
+
+  const toggleSelectItem = useCallback((id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleTrashSelected = useCallback(async () => {
+    if (!selectedIds.size) return;
+    setTrashing(true);
+    try {
+      const ok = await trashMany(Array.from(selectedIds));
+      if (ok) {
+        onNotify(`${selectedIds.size} liveri${selectedIds.size === 1 ? 'y' : 'es'} moved to trash`, 'success');
+        setSelectMode(false);
+        setSelectedIds(new Set());
+        // If the currently viewed item was trashed, clear it
+        if (selectedIds.has(selectedId)) setSelectedId(null);
+      } else {
+        onNotify('Failed to trash some items', 'error');
+      }
+    } finally {
+      setTrashing(false);
+      setShowTrashConfirm(false);
+    }
+  }, [selectedIds, trashMany, onNotify, selectedId]);
 
   if (loading) {
     return (
@@ -150,219 +284,311 @@ export function HistoryTab({
     : [];
 
   return (
-    <div className="flex h-full overflow-hidden">
-      {/* Left panel — card grid */}
-      <div className="w-[420px] min-w-[340px] flex-shrink-0 border-r border-border-default overflow-y-auto">
-        <div className="p-3 grid grid-cols-2 gap-2">
-          {items.map((item) => (
-            <HistoryCard
-              key={item.id}
-              item={item}
-              selected={item.id === selectedId}
-              onClick={() => setSelectedId(item.id)}
-            />
-          ))}
-        </div>
-      </div>
+    <div className="flex h-full overflow-hidden flex-col">
+      {/* Main content area */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left panel — filter bar + card grid + select bar */}
+        <div className="w-[420px] min-w-[340px] flex-shrink-0 border-r border-border-default flex flex-col overflow-hidden">
+          {/* Filter bar */}
+          <HistoryFilters
+            cars={cars}
+            items={items}
+            currentCar={selectedCar}
+            filterCurrentCarOnly={filterCurrentCarOnly}
+            filterBadges={filterBadges}
+            onToggleCurrentCarOnly={() => setFilterCurrentCarOnly(v => !v)}
+            onAddBadgeFilter={addBadgeFilter}
+            onRemoveBadgeFilter={removeBadgeFilter}
+            selectMode={selectMode}
+            selectedIds={selectedIds}
+            filteredItemsCount={filteredItems.length}
+            onToggleSelectMode={() => setSelectMode(m => !m)}
+            onToggleSelectAll={() => {
+              const allIds = new Set(filteredItems.map(i => i.id));
+              setSelectedIds(selectedIds.size === filteredItems.length ? new Set() : allIds);
+            }}
+            onDeleteSelected={() => setShowTrashConfirm(true)}
+            trashing={trashing}
+          />
 
-      {/* Right panel — detail */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-bg-dark relative">
-        {selectedItem ? (
-          <>
-            <LiveryDetailPanel
-              imageUrl={fullResUrl}
-              previewUrl={selectedItem.preview_url}
-              imagePath={selectedItem.livery_path}
-              downloadName={`${selectedItem.display_name || selectedItem.car_folder}${isSpecItem ? '_spec' : ''}.png`}
-              prompt={selectedItem.prompt}
-              context={selectedItem.context}
-              conversationLog={selectedItem.conversation_log}
-              meta={meta}
-              onDeploy={isSpecItem
-                ? (onDeploySpec ? () => onDeploySpec?.(selectedItem.livery_path, selectedItem.car_folder, null) : undefined)
-                : () => onDeploy?.(selectedItem.livery_path, selectedItem.car_folder, null)
-              }
-              deployLabel={isSpecItem ? 'Deploy Spec to iRacing' : 'Deploy to iRacing'}
-              deploying={deploying}
-              onLoadAsBase={!isSpecItem && selectedItem.livery_path ? () => {
-                onLoadAsBase?.(selectedItem.livery_path);
-                onSwitchTab?.('generate');
-              } : undefined}
-              onIterate={!isSpecItem ? () => onIterateFrom?.(selectedItem) : undefined}
-              onRegenerate={!isSpecItem && (selectedItem?.prompt || selectedItem?.context) ? () => onRegenerateFrom?.(selectedItem) : undefined}
-              onMakeSpec={!isSpecItem && selectedItem.livery_path ? () => {
-                onNavigateToSpecular?.(selectedItem.livery_path, selectedItem.car_folder);
-              } : undefined}
-              onDelete={() => { onDelete?.(selectedItem.id); setSelectedId(null); }}
-              onNotify={onNotify}
-              onSwitchTab={onSwitchTab}
-            />
-            {/* ── Inline car edit dropdown ───────────────────────────── */}
-            {editingCar && (
-              <div ref={carDropdownRef} className="absolute bottom-14 right-4 z-50 w-72 bg-bg-panel border border-border-default rounded-lg shadow-xl overflow-hidden">
-                <div className="p-2 border-b border-border-default">
-                  <input
-                    type="text"
-                    value={carSearch}
-                    onChange={(e) => setCarSearch(e.target.value)}
-                    placeholder="Search cars…"
-                    autoFocus
-                    className="w-full bg-bg-input border border-border-default rounded px-2 py-1.5 text-xs text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
-                  />
+          {/* Scrollable card grid */}
+          <div
+            ref={scrollContainerRef}
+            onScroll={handleScrollSave}
+            className="flex-1 overflow-y-auto"
+          >
+            <div className="p-3 grid grid-cols-2 gap-2">
+              {filteredItems.map((item) => (
+                <HistoryCard
+                  key={item.id}
+                  item={item}
+                  selected={!selectMode && item.id === selectedId}
+                  checked={selectMode && selectedIds.has(item.id)}
+                  selectMode={selectMode}
+                  onClick={() => {
+                    if (selectMode) {
+                      toggleSelectItem(item.id);
+                    } else {
+                      setSelectedId(item.id);
+                    }
+                  }}
+                  onDeploy={onDeploy}
+                  deploying={deploying}
+                  onNotify={onNotify}
+                />
+              ))}
+            </div>
+          </div>
+
+
+        </div>
+
+        {/* Right panel — detail */}
+        <div className="flex-1 flex flex-col overflow-hidden bg-bg-dark relative">
+          {selectedItem && !selectMode ? (
+            <>
+              <LiveryDetailPanel
+                imageUrl={fullResUrl}
+                previewUrl={selectedItem.preview_url}
+                imagePath={selectedItem.livery_path}
+                downloadName={`${selectedItem.display_name || selectedItem.car_folder}${isSpecItem ? '_spec' : ''}.png`}
+                prompt={selectedItem.prompt}
+                context={selectedItem.context}
+                conversationLog={selectedItem.conversation_log}
+                meta={meta}
+                onDeploy={isSpecItem
+                  ? (onDeploySpec ? () => onDeploySpec?.(selectedItem.livery_path, selectedItem.car_folder, null) : undefined)
+                  : () => onDeploy?.(selectedItem.livery_path, selectedItem.car_folder, null)
+                }
+                deployLabel={isSpecItem ? 'Deploy Spec to iRacing' : 'Deploy to iRacing'}
+                deploying={deploying}
+                onLoadAsBase={!isSpecItem && selectedItem.livery_path ? () => {
+                  onLoadAsBase?.(selectedItem.livery_path);
+                  onSwitchTab?.('generate');
+                } : undefined}
+                onIterate={!isSpecItem ? () => onIterateFrom?.(selectedItem) : undefined}
+                onRegenerate={!isSpecItem && !selectedItem?.upscaled && !selectedItem?.resampled && (selectedItem?.prompt || selectedItem?.context) ? () => onRegenerateFrom?.(selectedItem) : undefined}
+                onResample={!isSpecItem && selectedItem.livery_path ? () => {
+                  onNavigateToResample?.(selectedItem.livery_path);
+                } : undefined}
+                onUpscale={!isSpecItem && selectedItem.livery_path ? () => {
+                  onNavigateToUpscale?.(selectedItem.livery_path);
+                } : undefined}
+                onMakeSpec={!isSpecItem && selectedItem.livery_path ? () => {
+                  onNavigateToSpecular?.(selectedItem.livery_path, selectedItem.car_folder);
+                } : undefined}
+                onDelete={() => { onDelete?.(selectedItem.id); setSelectedId(null); }}
+                onNotify={onNotify}
+                onSwitchTab={onSwitchTab}
+              />
+              {/* ── Inline car edit dropdown ───────────────────────────── */}
+              {editingCar && (
+                <div ref={carDropdownRef} className="absolute bottom-14 right-4 z-50 w-72 bg-bg-panel border border-border-default rounded-lg shadow-xl overflow-hidden">
+                  <div className="p-2 border-b border-border-default">
+                    <input
+                      type="text"
+                      value={carSearch}
+                      onChange={(e) => setCarSearch(e.target.value)}
+                      placeholder="Search cars…"
+                      autoFocus
+                      className="w-full bg-bg-input border border-border-default rounded px-2 py-1.5 text-xs text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+                    />
+                  </div>
+                  <div className="max-h-52 overflow-y-auto">
+                    {cars
+                      .filter(c => !carSearch || c.display?.toLowerCase().includes(carSearch.toLowerCase()) || c.folder?.toLowerCase().includes(carSearch.toLowerCase()))
+                      .map(c => (
+                        <button
+                          key={c.folder}
+                          onClick={() => handleCarSelect(c.folder, c.display || c.folder)}
+                          className={`w-full text-left px-3 py-1.5 text-xs transition-colors cursor-pointer ${
+                            c.folder === selectedItem?.car_folder
+                              ? 'bg-accent/15 text-accent font-medium'
+                              : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                          }`}
+                        >
+                          {c.display || c.folder}
+                        </button>
+                      ))
+                    }
+                    {cars.filter(c => !carSearch || c.display?.toLowerCase().includes(carSearch.toLowerCase()) || c.folder?.toLowerCase().includes(carSearch.toLowerCase())).length === 0 && (
+                      <p className="px-3 py-2 text-[11px] text-text-muted">No cars match "{carSearch}"</p>
+                    )}
+                  </div>
                 </div>
-                <div className="max-h-52 overflow-y-auto">
-                  {cars
-                    .filter(c => !carSearch || c.display?.toLowerCase().includes(carSearch.toLowerCase()) || c.folder?.toLowerCase().includes(carSearch.toLowerCase()))
-                    .map(c => (
-                      <button
-                        key={c.folder}
-                        onClick={() => handleCarSelect(c.folder, c.display || c.folder)}
-                        className={`w-full text-left px-3 py-1.5 text-xs transition-colors cursor-pointer ${
-                          c.folder === selectedItem?.car_folder
-                            ? 'bg-accent/15 text-accent font-medium'
-                            : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
-                        }`}
-                      >
-                        {c.display || c.folder}
-                      </button>
-                    ))
-                  }
-                  {cars.filter(c => !carSearch || c.display?.toLowerCase().includes(carSearch.toLowerCase()) || c.folder?.toLowerCase().includes(carSearch.toLowerCase())).length === 0 && (
-                    <p className="px-3 py-2 text-[11px] text-text-muted">No cars match "{carSearch}"</p>
-                  )}
+              )}
+              {/* ── Spec associations panel ────────────────────────────── */}
+              {!isSpecItem && selectedItem.spec_maps?.length > 0 && (
+                <div className="flex-shrink-0 border-t border-border-default bg-bg-panel px-4 py-3">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-2">
+                    Linked Spec Maps ({selectedItem.spec_maps.length})
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedItem.spec_maps.map((specPath, idx) => {
+                      const specItem = items.find((i) => i.livery_path === specPath);
+                      const label = specItem
+                        ? formatTimestamp((specItem.timestamp || 0) * 1000)
+                        : getFilename(specPath);
+                      return (
+                        <button
+                          key={specPath}
+                          title={specPath}
+                          onClick={() => specItem && setSelectedId(specItem.id)}
+                          className="flex items-center gap-1.5 px-2 py-1 rounded border border-success/40 bg-success/5 text-[11px] text-success hover:bg-success/10 transition-colors"
+                        >
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="opacity-70">
+                            <path d="M12 3L9 9H3l4.5 4.5-1.5 6L12 16.5 18 19.5l-1.5-6L21 9h-6z" />
+                          </svg>
+                          Spec {idx + 1}
+                          {label && <span className="text-success/60">— {label}</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
-            {/* ── Spec associations panel ────────────────────────────── */}
-            {!isSpecItem && selectedItem.spec_maps?.length > 0 && (
-              <div className="flex-shrink-0 border-t border-border-default bg-bg-panel px-4 py-3">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-2">
-                  Linked Spec Maps ({selectedItem.spec_maps.length})
+              )}
+              {/* ── Iterations panel ───────────────────────────────────── */}
+              {!isSpecItem && selectedItem.iterations?.length > 0 && (
+                <div className="flex-shrink-0 border-t border-border-default bg-bg-panel px-4 py-3">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-2">
+                    Iterations ({selectedItem.iterations.length})
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedItem.iterations.map((iterPath, idx) => {
+                      const iterItem = items.find((i) => i.livery_path === iterPath);
+                      const label = iterItem
+                        ? formatTimestamp((iterItem.timestamp || 0) * 1000)
+                        : getFilename(iterPath);
+                      return (
+                        <button
+                          key={iterPath}
+                          title={iterPath}
+                          onClick={() => iterItem && setSelectedId(iterItem.id)}
+                          className="flex items-center gap-1.5 px-2 py-1 rounded border border-warning/40 bg-warning/5 text-[11px] text-warning hover:bg-warning/10 transition-colors"
+                        >
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="17 1 21 5 17 9" /><path d="M3 11V9a4 4 0 014-4h14" />
+                            <polyline points="7 23 3 19 7 15" /><path d="M21 13v2a4 4 0 01-4 4H3" />
+                          </svg>
+                          Iteration {idx + 1}
+                          {label && <span className="text-warning/60">— {label}</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {selectedItem.spec_maps.map((specPath, idx) => {
-                    const specItem = items.find((i) => i.livery_path === specPath);
-                    const label = specItem
-                      ? formatTimestamp((specItem.timestamp || 0) * 1000)
-                      : getFilename(specPath);
+              )}
+              {/* ── Source livery link (for spec items) ───────────────── */}
+              {isSpecItem && selectedItem.source_livery_path && (
+                <div className="flex-shrink-0 border-t border-border-default bg-bg-panel px-4 py-3">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1.5">
+                    Source Livery
+                  </div>
+                  {(() => {
+                    const srcItem = items.find(
+                      (i) => i.livery_path === selectedItem.source_livery_path
+                    );
                     return (
                       <button
-                        key={specPath}
-                        title={specPath}
-                        onClick={() => specItem && setSelectedId(specItem.id)}
-                        className="flex items-center gap-1.5 px-2 py-1 rounded border border-success/40 bg-success/5 text-[11px] text-success hover:bg-success/10 transition-colors"
+                        title={selectedItem.source_livery_path}
+                        onClick={() => srcItem && setSelectedId(srcItem.id)}
+                        disabled={!srcItem}
+                        className="flex items-center gap-1.5 px-2 py-1 rounded border border-accent/40 bg-accent/5 text-[11px] text-accent hover:bg-accent/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="opacity-70">
-                          <path d="M12 3L9 9H3l4.5 4.5-1.5 6L12 16.5 18 19.5l-1.5-6L21 9h-6z" />
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M15 3h6v6M10 14L21 3M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" />
                         </svg>
-                        Spec {idx + 1}
-                        {label && <span className="text-success/60">— {label}</span>}
+                        {srcItem
+                          ? `${srcItem.display_name || srcItem.car_folder} — ${formatTimestamp((srcItem.timestamp || 0) * 1000)}`
+                          : getFilename(selectedItem.source_livery_path)}
                       </button>
                     );
-                  })}
+                  })()}
                 </div>
-              </div>
-            )}
-            {/* ── Iterations panel ───────────────────────────────────── */}
-            {!isSpecItem && selectedItem.iterations?.length > 0 && (
-              <div className="flex-shrink-0 border-t border-border-default bg-bg-panel px-4 py-3">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-2">
-                  Iterations ({selectedItem.iterations.length})
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {selectedItem.iterations.map((iterPath, idx) => {
-                    const iterItem = items.find((i) => i.livery_path === iterPath);
-                    const label = iterItem
-                      ? formatTimestamp((iterItem.timestamp || 0) * 1000)
-                      : getFilename(iterPath);
+              )}
+              {/* ── Source livery link (for modify/iterate items) ──────── */}
+              {!isSpecItem && selectedItem.source_livery_path && (
+                <div className="flex-shrink-0 border-t border-border-default bg-bg-panel px-4 py-3">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1.5">
+                    Based On
+                  </div>
+                  {(() => {
+                    const srcItem = items.find(
+                      (i) => i.livery_path === selectedItem.source_livery_path
+                    );
                     return (
                       <button
-                        key={iterPath}
-                        title={iterPath}
-                        onClick={() => iterItem && setSelectedId(iterItem.id)}
-                        className="flex items-center gap-1.5 px-2 py-1 rounded border border-warning/40 bg-warning/5 text-[11px] text-warning hover:bg-warning/10 transition-colors"
+                        title={selectedItem.source_livery_path}
+                        onClick={() => srcItem && setSelectedId(srcItem.id)}
+                        disabled={!srcItem}
+                        className="flex items-center gap-1.5 px-2 py-1 rounded border border-warning/40 bg-warning/5 text-[11px] text-warning hover:bg-warning/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <polyline points="17 1 21 5 17 9" /><path d="M3 11V9a4 4 0 014-4h14" />
                           <polyline points="7 23 3 19 7 15" /><path d="M21 13v2a4 4 0 01-4 4H3" />
                         </svg>
-                        Iteration {idx + 1}
-                        {label && <span className="text-warning/60">— {label}</span>}
+                        {srcItem
+                          ? `${srcItem.display_name || srcItem.car_folder} — ${formatTimestamp((srcItem.timestamp || 0) * 1000)}`
+                          : getFilename(selectedItem.source_livery_path)}
                       </button>
                     );
-                  })}
+                  })()}
                 </div>
-              </div>
-            )}
-            {/* ── Source livery link (for spec items) ───────────────── */}
-            {isSpecItem && selectedItem.source_livery_path && (
-              <div className="flex-shrink-0 border-t border-border-default bg-bg-panel px-4 py-3">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1.5">
-                  Source Livery
-                </div>
-                {(() => {
-                  const srcItem = items.find(
-                    (i) => i.livery_path === selectedItem.source_livery_path
-                  );
-                  return (
-                    <button
-                      title={selectedItem.source_livery_path}
-                      onClick={() => srcItem && setSelectedId(srcItem.id)}
-                      disabled={!srcItem}
-                      className="flex items-center gap-1.5 px-2 py-1 rounded border border-accent/40 bg-accent/5 text-[11px] text-accent hover:bg-accent/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M15 3h6v6M10 14L21 3M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" />
-                      </svg>
-                      {srcItem
-                        ? `${srcItem.display_name || srcItem.car_folder} — ${formatTimestamp((srcItem.timestamp || 0) * 1000)}`
-                        : getFilename(selectedItem.source_livery_path)}
-                    </button>
-                  );
-                })()}
-              </div>
-            )}
-            {/* ── Source livery link (for modify/iterate items) ──────── */}
-            {!isSpecItem && selectedItem.source_livery_path && (
-              <div className="flex-shrink-0 border-t border-border-default bg-bg-panel px-4 py-3">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1.5">
-                  Based On
-                </div>
-                {(() => {
-                  const srcItem = items.find(
-                    (i) => i.livery_path === selectedItem.source_livery_path
-                  );
-                  return (
-                    <button
-                      title={selectedItem.source_livery_path}
-                      onClick={() => srcItem && setSelectedId(srcItem.id)}
-                      disabled={!srcItem}
-                      className="flex items-center gap-1.5 px-2 py-1 rounded border border-warning/40 bg-warning/5 text-[11px] text-warning hover:bg-warning/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="17 1 21 5 17 9" /><path d="M3 11V9a4 4 0 014-4h14" />
-                        <polyline points="7 23 3 19 7 15" /><path d="M21 13v2a4 4 0 01-4 4H3" />
-                      </svg>
-                      {srcItem
-                        ? `${srcItem.display_name || srcItem.car_folder} — ${formatTimestamp((srcItem.timestamp || 0) * 1000)}`
-                        : getFilename(selectedItem.source_livery_path)}
-                    </button>
-                  );
-                })()}
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <p className="text-sm text-text-muted">Select an item to view details</p>
-          </div>
-        )}
+              )}
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center">
+              {selectMode
+                ? <p className="text-sm text-text-muted">
+                    {selectedIds.size === 0
+                      ? 'Click cards to select liveries'
+                      : `${selectedIds.size} liveri${selectedIds.size === 1 ? 'y' : 'es'} selected`}
+                  </p>
+                : <p className="text-sm text-text-muted">Select an item to view details</p>
+              }
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* ── Trash confirmation modal ─────────────────────────────────────────── */}
+      <Modal
+        isOpen={showTrashConfirm}
+        onClose={() => setShowTrashConfirm(false)}
+        title="Move to Trash"
+        size="sm"
+      >
+        <div className="p-5 flex flex-col gap-4">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-full bg-error/10 flex items-center justify-center flex-shrink-0">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-error">
+                <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-[13px] font-semibold text-text-primary mb-1">
+                Delete {selectedIds.size} liveri{selectedIds.size === 1 ? 'y' : 'es'}?
+              </p>
+              <p className="text-[12px] text-text-secondary leading-relaxed">
+                Will be moved to <code className="bg-bg-input px-1 rounded text-accent font-mono">/trash</code> and permanently deleted after 1 day.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button variant="secondary" size="sm" onClick={() => setShowTrashConfirm(false)} disabled={trashing}>
+              Cancel
+            </Button>
+            <Button variant="danger" size="sm" onClick={handleTrashSelected} loading={trashing}>
+              Move to Trash
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
 
-function HistoryCard({ item, selected, onClick }) {
+function HistoryCard({ item, selected, checked, selectMode, onClick, onDeploy, deploying, onNotify }) {
   const modelLabel = item.model?.includes('pro') ? 'Pro' : item.model?.includes('flash') ? 'Flash' : null;
   const modeLabel = item.mode === 'iterate' ? 'Iterate' : item.mode === 'modify' ? 'Modify' : null;
   const isSpecItem = item.entry_type === 'spec' || item.mode === 'spec';
@@ -372,7 +598,11 @@ function HistoryCard({ item, selected, onClick }) {
     <div
       onClick={onClick}
       className={`bg-bg-card border rounded-lg overflow-hidden cursor-pointer transition-all group relative flex flex-col ${
-        selected
+        selectMode
+          ? checked
+            ? 'border-accent ring-2 ring-accent/40'
+            : 'border-border-default hover:border-accent/40'
+          : selected
           ? 'border-accent-teal ring-1 ring-accent-teal/30'
           : 'border-border-default hover:border-accent-teal/30'
       }`}
@@ -388,6 +618,20 @@ function HistoryCard({ item, selected, onClick }) {
         ) : (
           <div className="w-full h-full flex items-center justify-center text-text-muted">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="opacity-30"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg>
+          </div>
+        )}
+        {/* Select mode checkbox overlay */}
+        {selectMode && (
+          <div className="absolute inset-0 bg-bg-dark/20 flex items-start justify-start p-1.5 pointer-events-none">
+            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
+              checked ? 'bg-accent border-accent' : 'bg-bg-panel/80 border-text-muted/60'
+            }`}>
+              {checked && (
+                <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="2 6 5 9 10 3" />
+                </svg>
+              )}
+            </div>
           </div>
         )}
         {/* Badges */}
@@ -428,12 +672,15 @@ function HistoryCard({ item, selected, onClick }) {
             </span>
           )}
         </div>
-        {/* Hover action tray */}
-        {item.preview_url && (
+        {/* Hover action tray (hidden in select mode) */}
+        {item.preview_url && !selectMode && (
           <ImageActionTray
             imageUrl={item.preview_url}
             imagePath={item.livery_path}
             downloadName={`${item.display_name || item.car_folder}.png`}
+            onDeploy={() => onDeploy(item.livery_path, item.car_folder)}
+            deploying={deploying}
+            onNotify={onNotify}
           />
         )}
       </div>
@@ -458,4 +705,3 @@ function HistoryCard({ item, selected, onClick }) {
   );
 }
 
-export default HistoryTab;

@@ -26,12 +26,25 @@ class UpscaleService extends BaseService {
   }
 
   /**
-   * Resample a livery using SeedVR2 (downres to 1024 → diffusion upscale to 2048).
-   * @param {string} sourcePath - Server-side path to the source TGA/PNG.
-   * @returns {Promise<{output_path: string, preview_b64: string, size: number[]}>}
+   * Resample a livery: downscale → optional noise → upscale → optional final 2K.
+   * @param {string} sourcePath       - Server-side path to the source TGA/PNG.
+   * @param {Object} [opts]
+   * @param {number} [opts.downsampleSize=1024] - Size to downscale to before upscaling.
+   * @param {number} [opts.upsampleSize=2048]   - Target upscale resolution.
+   * @param {boolean}[opts.final2k=false]        - If true and upsampleSize>2048, downsample final to 2048.
+   * @param {boolean}[opts.addNoise=false]       - Add noise to downscaled image before upscaling.
+   * @param {number} [opts.noiseAmount=0]        - Noise strength 0–100.
+   * @returns {Promise<{output_path: string, preview_b64: string, size: number[], noised_input_b64?: string}>}
    */
-  async resample(sourcePath) {
-    return this.post('/resample', { path: sourcePath });
+  async resample(sourcePath, opts = {}) {
+    return this.post('/resample', {
+      path:            sourcePath,
+      downsample_size: opts.downsampleSize ?? 1024,
+      upsample_size:   opts.upsampleSize   ?? 2048,
+      final_2k:        opts.final2k        ?? false,
+      add_noise:       opts.addNoise       ?? false,
+      noise_amount:    opts.noiseAmount    ?? 0,
+    });
   }
 
   /**

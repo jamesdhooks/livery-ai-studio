@@ -5,13 +5,15 @@
 # Creates/activates a Python venv, installs deps, and launches the app.
 #
 # Usage:
-#   ./start.sh                    Launch normally
-#   ./start.sh --gpu              Also install GPU upscaling deps (NVIDIA only)
-#   ./start.sh --gpu --cuda 11    Install with CUDA 11.x (for RTX 30xx)
-#   ./start.sh --gpu --cuda 12    Install with CUDA 12.x (default, for 40xx/50xx)
-#   ./start.sh --port 8080        Use a custom port
-#   ./start.sh --skip-install     Skip pip install (faster restart)
-#   ./start.sh --build-frontend   Rebuild the React frontend (requires Node.js)
+#   ./start.sh                        Launch normally
+#   ./start.sh --realesrgan           Install Real-ESRGAN GPU upscaling (NVIDIA only)
+#   ./start.sh --realesrgan --cuda 11 Install with CUDA 11.x (for RTX 30xx)
+#   ./start.sh --realesrgan --cuda 12 Install with CUDA 12.x (default, for 40xx/50xx)
+#   ./start.sh --seedvr               Install SeedVR2 diffusion upscaler (NVIDIA only)
+#   ./start.sh --realesrgan --seedvr  Install both upscale engines
+#   ./start.sh --port 8080            Use a custom port
+#   ./start.sh --skip-install         Skip pip install (faster restart)
+#   ./start.sh --build-frontend       Rebuild the React frontend (requires Node.js)
 #
 # NOTE: The pre-built frontend is included in static/ — Node.js is NOT
 # required to run the app. Use --build-frontend only if you have modified
@@ -28,13 +30,15 @@ VENV_DIR="$APP_DIR/.venv"
 PORT=5199
 INSTALL_GPU=0
 CUDA_VER=12
+INSTALL_SEEDVR=0
 SKIP_INSTALL=0
 BUILD_FRONTEND=0
 
 # ─── Parse arguments ──────────────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --gpu)             INSTALL_GPU=1; shift ;;
+        --realesrgan)      INSTALL_GPU=1; shift ;;
+        --seedvr)          INSTALL_SEEDVR=1; shift ;;
         --cuda)            CUDA_VER="$2"; shift 2 ;;
         --port)            PORT="$2"; shift 2 ;;
         --skip-install)    SKIP_INSTALL=1; shift ;;
@@ -100,7 +104,7 @@ if [[ "$SKIP_INSTALL" -eq 0 ]]; then
 
     if [[ "$INSTALL_GPU" -eq 1 ]]; then
         echo ""
-        echo " Installing GPU upscaling dependencies..."
+        echo " Installing Real-ESRGAN GPU upscaling..."
 
         # Auto-detect RTX 50xx (Blackwell) if --cuda not explicitly overridden
         if [[ "$CUDA_VER" == "12" ]]; then
@@ -130,6 +134,43 @@ if [[ "$SKIP_INSTALL" -eq 0 ]]; then
 
         # Download model weights
         python "$APP_DIR/setup.py" --upscale
+        echo " ✓ Real-ESRGAN installation complete"
+    fi
+
+    if [[ "$INSTALL_SEEDVR" -eq 1 ]]; then
+        echo ""
+        echo " Installing SeedVR2 diffusion upscaler..."
+
+        # Ensure torch is installed (SeedVR2 needs it even without Real-ESRGAN)
+        python -c "import torch" 2>/dev/null || {
+            echo " [INFO] torch not found — installing CUDA 12.4 PyTorch for SeedVR2..."
+            if [[ "$CUDA_VER" == "11" ]]; then
+                pip install --quiet torch torchvision --index-url https://download.pytorch.org/whl/cu118
+            elif [[ "$CUDA_VER" == "50" ]]; then
+                pip install --quiet --pre torch torchvision --index-url https://download.pytorch.org/whl/nightly/cu128
+            else
+                pip install --quiet torch torchvision --index-url https://download.pytorch.org/whl/cu124
+            fi
+        }
+
+        if [[ ! -d "$APP_DIR/seedvr2_videoupscaler" ]]; then
+            echo " Cloning SeedVR2 repository..."
+            if ! command -v git &>/dev/null; then
+                echo " [ERROR] Git not found. Install Git to use --seedvr."
+            else
+                git clone https://github.com/numz/ComfyUI-SeedVR2_VideoUpscaler.git "$APP_DIR/seedvr2_videoupscaler"
+                echo " ✓ SeedVR2 repository cloned"
+            fi
+        else
+            echo " ✓ SeedVR2 repository already exists"
+        fi
+
+        if [[ -f "$APP_DIR/seedvr2_videoupscaler/requirements.txt" ]]; then
+            echo " Installing SeedVR2 dependencies..."
+            pip install --quiet -r "$APP_DIR/seedvr2_videoupscaler/requirements.txt"
+            echo " ✓ SeedVR2 dependencies installed"
+        fi
+        echo " ✓ SeedVR2 installation complete"
     fi
 else
     echo " Skipping dependency install (--skip-install)"

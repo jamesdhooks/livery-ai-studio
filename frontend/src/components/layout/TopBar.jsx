@@ -62,7 +62,10 @@ function IconBadge({ className = '' }) {
 function IconShine({ className = '' }) {
   return (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <circle cx="12" cy="12" r="9" /><path d="M9.09 9a3 3 0 005.83 1c0 2-3 3-3 3" /><path d="M15 16c0 1.66-.73 3.14-1.88 4.12M9 20.12C10.14 21.14 11.67 22 13.5 22" />
+      {/* Main sphere */}
+      <circle cx="12" cy="12" r="8" />
+      {/* Highlight on top-left */}
+      <ellipse cx="9" cy="8" rx="2" ry="3" />
     </svg>
   );
 }
@@ -83,8 +86,8 @@ const TABS = [
   { id: 'generate',        label: 'Generate',        Icon: IconGemini },
   { id: 'history',         label: 'History',          Icon: IconClock },
   { id: 'upscale',         label: 'Upscale',          Icon: IconZap },
-  { id: 'sponsors',        label: 'Sponsors',         Icon: IconBadge, soon: true },
   { id: 'specular',        label: 'Specular',         Icon: IconShine },
+  { id: 'sponsors',        label: 'Sponsors',         Icon: IconBadge, soon: true },
   { id: 'cars',            label: 'Cars',             Icon: IconCar },
   { id: 'settings',        label: 'Settings',         Icon: IconCog },
 ];

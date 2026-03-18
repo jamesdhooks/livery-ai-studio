@@ -32,6 +32,19 @@ set "APP_DIR=%~dp0"
 set "BUILD_VENV=%APP_DIR%.build-venv"
 set "SKIP_FRONTEND=0"
 
+:: Check if the app is already running (locks pythoncom310.dll / python DLLs)
+echo  Checking for running app instances...
+tasklist /FI "IMAGENAME eq python.exe" /FO CSV 2>nul | findstr /I "python" >nul
+if %errorlevel%==0 (
+    echo.
+    echo  [WARNING] Python processes are currently running.
+    echo  If Livery AI Studio is open, close it before building.
+    echo  Otherwise pythoncom310.dll will be locked and the build will fail.
+    echo.
+    choice /C YN /M "Continue anyway?"
+    if !errorlevel!==2 ( echo  Build cancelled. & pause & exit /b 1 )
+)
+
 :: Parse arguments
 :parse_args
 if "%~1"=="" goto done_args

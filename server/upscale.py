@@ -58,16 +58,37 @@ def is_available() -> bool:
     return True
 
 
+def _resize_aspect_aware(image: Image.Image, target_size: int) -> Image.Image:
+    """
+    Resize image to target size while preserving aspect ratio.
+    The target_size becomes the length of the longest side.
+    Shorter side is scaled proportionally.
+    """
+    w, h = image.size
+    max_dim = max(w, h)
+    
+    if max_dim == target_size:
+        return image
+    
+    # Scale both dimensions proportionally
+    scale = target_size / max_dim
+    new_w = int(w * scale)
+    new_h = int(h * scale)
+    
+    return image.resize((new_w, new_h), Image.LANCZOS)
+
+
 def upscale_to_2048(image: Image.Image, tile: int = 512) -> Image.Image:
     """
-    Upscale `image` using Real-ESRGAN x4, then crop/resize to exactly 2048×2048.
+    Upscale `image` using Real-ESRGAN x4, then resize to 2048px (longest side).
+    Aspect ratio is preserved — target_size becomes the length of the longest dimension.
 
     Args:
         image: PIL Image (any mode; will be converted to RGB internally)
         tile:  Tile size for VRAM-safe inference. Reduce to 256 on <8GB GPUs.
 
     Returns:
-        2048×2048 PIL Image in RGBA mode.
+        PIL Image in RGBA mode with longest side = 2048px (aspect ratio preserved).
 
     Raises:
         RuntimeError: if Real-ESRGAN or weights are not available.
@@ -163,16 +184,110 @@ def upscale_to_2048(image: Image.Image, tile: int = 512) -> Image.Image:
     upscaled = Image.fromarray(output_rgb)
     print(f"[upscale] Upscaled size: {upscaled.size}")
 
-    # Resize to exact 2048×2048 (upscaled from 1024 will be 4096, so downsample cleanly)
-    if upscaled.size != (2048, 2048):
-        print(f"[upscale] Resizing {upscaled.size} → 2048×2048")
-        upscaled = upscaled.resize((2048, 2048), Image.LANCZOS)
+    # Resize to 2048px on longest side (aspect ratio aware)
+    upscaled = _resize_aspect_aware(upscaled, 2048)
+    print(f"[upscale] Final size (longest side = 2048): {upscaled.size}")
 
     result = upscaled.convert("RGBA")
 
-    # Re-apply original alpha if image had one
+    # Re-apply original alpha if image had one (also aspect-aware)
     if has_alpha:
-        alpha_resized = alpha.resize((2048, 2048), Image.LANCZOS)
+        alpha_resized = _resize_aspect_aware(alpha, 2048)
+        result.putalpha(alpha_resized)
+
+    return result
+
+
+def resample_to_2048(image: Image.Image) -> Image.Image:
+    """
+    Resample `image` using Real-ESRGAN: downres to 1024×1024, then upscale to 2048×2048.
+    Legacy wrapper — prefer ``resample_image`` for configurable sizes.
+    """
+    print(f"[upscale] Resampling: downresizing {image.size} → 1024×1024")
+    downresized = image.resize((1024, 1024), Image.LANCZOS)
+    print("[upscale] Running Real-ESRGAN on 1024×1024 input…")
+    return upscale_to_2048(downresized)
+
+
+def resample_image(image: Image.Image, target_size: int = 2048) -> Image.Image:
+    """
+    Upscale ``image`` using Real-ESRGAN 4×, then resize to ``target_size`` (longest side).
+
+    The image is assumed to already be pre-processed (downscaled, noised, etc.)
+    by the caller. This function only runs the upscale and final resize.
+    Aspect ratio is preserved — target_size becomes the length of the longest dimension.
+
+    Args:
+        image:       PIL Image to upscale (the pre-downscaled input).
+        target_size: Target resolution for the longest side (e.g. 2048, 4096).
+
+    Returns:
+        PIL Image in RGBA mode with longest side = target_size (aspect ratio preserved).
+    """
+    global _model_instance
+
+    if not is_available():
+        raise RuntimeError(
+            "Real-ESRGAN upscaling is not available. "
+            "Run setup.py or see GETTING_STARTED.md for installation steps."
+        )
+
+    import torch
+    import numpy as np
+    import cv2
+    from realesrgan import RealESRGANer
+    from basicsr.archs.rrdbnet_arch import RRDBNet
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # Load model if needed (mirrors upscale_to_2048 loading logic)
+    if _model_instance is None:
+        rrdb = RRDBNet(
+            num_in_ch=3, num_out_ch=3,
+            num_feat=64, num_block=23, num_grow_ch=32,
+            scale=4,
+        )
+        try:
+            loadnet = torch.load(str(_WEIGHTS_PATH), map_location=device, weights_only=False)
+        except TypeError:
+            loadnet = torch.load(str(_WEIGHTS_PATH), map_location=device)
+        keyname = "params_ema" if "params_ema" in loadnet else ("params" if "params" in loadnet else None)
+        if keyname:
+            rrdb.load_state_dict(loadnet[keyname], strict=True)
+        else:
+            rrdb.load_state_dict(loadnet, strict=True)
+        rrdb.eval()
+        rrdb = rrdb.to(device)
+        _model_instance = RealESRGANer(
+            scale=4,
+            model_path=str(_WEIGHTS_PATH),
+            model=rrdb,
+            tile=512,
+            tile_pad=10,
+            pre_pad=0,
+            half=device.type == "cuda",
+            device=device,
+        )
+
+    has_alpha = image.mode == "RGBA"
+    if has_alpha:
+        alpha = image.split()[-1]
+
+    rgb = image.convert("RGB")
+    bgr = cv2.cvtColor(np.array(rgb), cv2.COLOR_RGB2BGR)
+
+    print(f"[upscale] resample_image: upscaling {image.size} → ×4 (target longest side: {target_size}px)")
+    output_bgr, _ = _model_instance.enhance(bgr, outscale=4)
+    output_rgb = cv2.cvtColor(output_bgr, cv2.COLOR_BGR2RGB)
+    upscaled = Image.fromarray(output_rgb)
+
+    # Resize to target_size on longest side (aspect ratio aware)
+    upscaled = _resize_aspect_aware(upscaled, target_size)
+    print(f"[upscale] resample_image: final size (longest side = {target_size}): {upscaled.size}")
+
+    result = upscaled.convert("RGBA")
+    if has_alpha:
+        alpha_resized = _resize_aspect_aware(alpha, target_size)
         result.putalpha(alpha_resized)
 
     return result

@@ -2,25 +2,35 @@ import React from 'react';
 
 /**
  * GenerationProgress — animated progress bar with elapsed time, slow warning,
- * and a Cancel button.
+ * and an optional Cancel button.
  *
- * Shown during AI generation (livery or specular map).
+ * Generic enough for any long-running operation (AI generation, upscaling, resampling, etc.).
  *
  * @param {Object}   props
- * @param {boolean}  props.generating      - Whether generation is active
- * @param {number}   props.elapsedSeconds  - Real elapsed seconds from the hook
- * @param {Function} props.onAbort         - Abort/cancel handler
- * @param {number}   [props.expectedMax=30]- Seconds at which bar reaches ~95%
- * @param {number}   [props.slowThreshold=40] - Seconds after which "taking long" warning shows
+ * @param {boolean}  props.active           - Whether the operation is active
+ * @param {number}   props.elapsedSeconds   - Real elapsed seconds from the hook
+ * @param {Function} [props.onAbort]        - Abort/cancel handler (omit to hide Cancel)
+ * @param {number}   [props.expectedMax=30] - Seconds at which bar reaches ~95%
+ * @param {number}   [props.slowThreshold=40] - Seconds after which slow warning shows
+ * @param {string}   [props.hint]           - Short hint shown while under slowThreshold
+ * @param {string}   [props.slowHint]       - Warning text shown once slowThreshold is passed
+ *
+ * @deprecated props.generating — use `active` instead (still accepted for back-compat)
  */
 export function GenerationProgress({
+  // canonical prop
+  active,
+  // back-compat alias used by GenerateTab
   generating,
   elapsedSeconds,
   onAbort,
   expectedMax = 30,
   slowThreshold = 40,
+  hint = '~15–30s expected',
+  slowHint = 'Taking longer than expected',
 }) {
-  if (!generating) return null;
+  const isActive = active ?? generating;
+  if (!isActive) return null;
 
   // Progress: eases from 0→~95% over expectedMax seconds, never reaches 100% until done
   const raw = elapsedSeconds / expectedMax;
@@ -68,13 +78,13 @@ export function GenerationProgress({
                 <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
                 <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
               </svg>
-              Taking longer than expected — Gemini may be slow
+              {slowHint}
             </span>
           )}
 
           {!isSlow && (
             <span className="text-[10px] text-text-muted">
-              ~15–30s expected
+              {hint}
             </span>
           )}
         </div>

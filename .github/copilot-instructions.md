@@ -296,6 +296,49 @@ npm run build
 - User car overrides go in `data/cars/`
 
 ## Git Conventions
+
+### Commit Message Format
+Follow semantic commit format with detailed body. Pattern:
+
+```
+type: concise subject (50 chars max)
+
+Section Headers (All Caps)
+- Bullet point 1
+- Bullet point 2
+
+Additional Section
+- Details here
+```
+
+**Types:** `feat` (features), `fix` (bugs), `refactor` (restructuring), `docs` (documentation), `chore` (config/tooling)
+
+**Good Example:**
+```
+feat: merged history bars, inherit upscale source metadata
+
+UI
+- Merged filter + select bars into single topbar in history sidebar
+- Updated specular icon to polished sphere with reflection
+
+Upscale/Resample
+- /api/upscale and /api/resample now load source livery sidecar
+  Inherited: prompt, mode, model, car, car_folder, customer_id, etc.
+  Result properly associated in history
+
+Fixes
+- /api/deploy: null safety on data extraction
+```
+
+**Rules:**
+- 1st line: type + subject, no period, imperative mood ("merge" not "merged")
+- Blank line after subject
+- Body: 70–80 chars per line, section headers in ALL_CAPS
+- Include what + why, not just what
+- Reference relevant files/functions when helpful
+- Never "AI-sounding" — developer friendly, conversational tone
+
+### File & Directory Conventions
 - Never commit `config.json` (contains API key)
 - Never commit `data/` directory (generated content)
 - Never commit `frontend/node_modules/`

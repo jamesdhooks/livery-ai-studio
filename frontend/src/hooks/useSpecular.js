@@ -11,6 +11,10 @@ import logService from '../services/LogService';
  * Also exposes `abort` to cancel an in-flight request and `elapsedSeconds`
  * for real-time elapsed time tracking during generation.
  *
+ * @param {Object} options
+ * @param {Function} [options.onNotify] - Toast callback
+ * @param {Function} [options.onError] - Service error callback (for modal display)
+ *
  * @returns {{
  *   generating: boolean,
  *   elapsedSeconds: number,
@@ -22,7 +26,7 @@ import logService from '../services/LogService';
  *   clearStatus: () => void,
  * }}
  */
-export function useSpecular({ onNotify } = {}) {
+export function useSpecular({ onNotify, onError } = {}) {
   const [generating, setGenerating] = useState(false);
   const [deploying, setDeploying] = useState(false);
   const [result, setResult] = useState(null);
@@ -101,6 +105,15 @@ export function useSpecular({ onNotify } = {}) {
     } catch (e) {
       if (e.name === 'AbortError') return null;
       notify('error', `Generation failed: ${e.message}`);
+      
+      // Show service error modal for API errors
+      if (onError) {
+        onError({
+          message: e.message,
+          code: e.code,
+        });
+      }
+      
       logService.log(`[specular] Error: ${e.message}`);
       return null;
     } finally {
@@ -109,7 +122,7 @@ export function useSpecular({ onNotify } = {}) {
       setElapsedSeconds(0);
       setGenerating(false);
     }
-  }, [generating, startTimer, stopTimer, notify]);
+  }, [generating, startTimer, stopTimer, notify, onError]);
 
   const deploySpec = useCallback(async (tgaPath, carFolder, customerId) => {
     if (deploying) return null;
@@ -122,12 +135,21 @@ export function useSpecular({ onNotify } = {}) {
       return data;
     } catch (e) {
       notify('error', `Deploy failed: ${e.message}`);
+      
+      // Show service error modal for API errors
+      if (onError) {
+        onError({
+          message: e.message,
+          code: e.code,
+        });
+      }
+      
       if (onNotify) setStatus(null);
       return null;
     } finally {
       setDeploying(false);
     }
-  }, [deploying, notify]);
+  }, [deploying, notify, onError]);
 
   const clearStatus = useCallback(() => setStatus(null), []);
 

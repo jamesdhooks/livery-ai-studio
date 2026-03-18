@@ -734,13 +734,21 @@ export function GettingStartedTab() {
               </ol>
             </FaqItem>
 
-            <FaqItem question="The Upscale tab shows a warning or 'GPU not available'">
-              <p>GPU upscaling requires an NVIDIA GPU with 6+ GB VRAM and CUDA installed.</p>
+            <FaqItem question="The Upscale tab shows a warning or 'not installed'">
+              <p>Both upscale engines require an NVIDIA GPU with CUDA. Install either or both:</p>
               <ul className="mt-2 ml-4 list-disc space-y-1">
-                <li>Re-launch using <code className="bg-bg-card px-1 rounded text-[12px] text-accent font-mono">start-with-upscale.bat</code> (or <code className="bg-bg-card px-1 rounded text-[12px] text-accent font-mono">start.bat --gpu</code>) to install the CUDA-enabled PyTorch and Real-ESRGAN dependencies.</li>
-                <li>For RTX 30-series GPUs add the <code className="bg-bg-card px-1 rounded text-[12px] text-accent font-mono">--cuda 11</code> flag; RTX 40/50-series use the default (CUDA 12).</li>
-                <li>Run <code className="bg-bg-card px-1 rounded text-[12px] text-accent font-mono">python setup.py --check</code> in a terminal to verify your upscale setup.</li>
-                <li>If you don't have an NVIDIA GPU, upscaling is unavailable but generated textures are still resized to 2048x2048 using Lanczos resampling — quality is good, just not as sharp as Real-ESRGAN.</li>
+                <li>
+                  <strong>Real-ESRGAN</strong> (fast, ~30s) — re-launch with{' '}
+                  <code className="bg-bg-card px-1 rounded text-[12px] text-accent font-mono">start.bat --realesrgan</code>{' '}
+                  (or <code className="bg-bg-card px-1 rounded text-[12px] text-accent font-mono">start-with-upscale.bat</code>)
+                </li>
+                <li>
+                  <strong>SeedVR2</strong> (higher quality, 30s–2 min, requires 8+ GB VRAM + Git) — re-launch with{' '}
+                  <code className="bg-bg-card px-1 rounded text-[12px] text-accent font-mono">start.bat --seedvr</code>
+                </li>
+                <li>Install both at once: <code className="bg-bg-card px-1 rounded text-[12px] text-accent font-mono">start.bat --realesrgan --seedvr</code></li>
+                <li>For RTX 30-series GPUs add <code className="bg-bg-card px-1 rounded text-[12px] text-accent font-mono">--cuda 11</code>; RTX 40/50-series use the default (CUDA 12).</li>
+                <li>If you don't have an NVIDIA GPU, both engines are unavailable but generated textures are still resized to 2048×2048 using Lanczos resampling.</li>
               </ul>
             </FaqItem>
 

@@ -1,6 +1,7 @@
 import React, { createContext, useContext } from 'react';
 import { useSpecular } from '../hooks/useSpecular';
 import { useToastContext } from './ToastContext';
+import { useServiceError } from '../hooks/useServiceError';
 
 const SpecularContext = createContext(null);
 
@@ -9,7 +10,8 @@ const SpecularContext = createContext(null);
  */
 export function SpecularProvider({ children }) {
   const { toast } = useToastContext();
-  const value = useSpecular({ onNotify: toast });
+  const { showError } = useServiceError();
+  const value = useSpecular({ onNotify: toast, onError: showError });
 
   return (
     <SpecularContext.Provider value={value}>

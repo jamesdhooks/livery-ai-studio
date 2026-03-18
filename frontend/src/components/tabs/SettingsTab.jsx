@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '../common/Button';
-import { Toggle } from '../common/Toggle';
 import { WipeDataModal } from '../modals/WipeDataModal';
+import { TrashModal } from '../modals/TrashModal';
 import upscaleService from '../../services/UpscaleService';
 import { useToastContext } from '../../context/ToastContext';
 import { useConfigContext } from '../../context/ConfigContext';
+import { useHistoryContext } from '../../context/HistoryContext';
 
 export function SettingsTab({ capabilities }) {
   const { toast } = useToastContext();
   const { config, loading, saveConfig: onSaveConfig } = useConfigContext();
+  const { trashCount, clearTrash } = useHistoryContext();
   const [apiKey, setApiKey] = useState('');
   const [apiKeyMasked, setApiKeyMasked] = useState(true);
   const [customerId, setCustomerId] = useState('');
@@ -17,7 +19,11 @@ export function SettingsTab({ capabilities }) {
   const [pricePro, setPricePro] = useState('');
   const [dataDir, setDataDir] = useState('');
   const [upscaleEngine, setUpscaleEngine] = useState('realesrgan');
+  const [seedvr2UseGguf, setSeedvr2UseGguf] = useState(true);
+  const [seedvr2MultiGpu, setSeedvr2MultiGpu] = useState(false);
   const [showWipeModal, setShowWipeModal] = useState(false);
+  const [showTrashModal, setShowTrashModal] = useState(false);
+  const [clearingTrash, setClearingTrash] = useState(false);
 
   useEffect(() => {
     if (!config) return;
@@ -31,6 +37,8 @@ export function SettingsTab({ capabilities }) {
     setPricePro(String(config.price_pro ?? 0.134));
     setDataDir(config.data_dir || '');
     setUpscaleEngine(config.upscale_engine || 'realesrgan');
+    setSeedvr2UseGguf(config.seedvr2_use_gguf !== false);
+    setSeedvr2MultiGpu(config.seedvr2_multi_gpu === true);
   }, [config]);
 
   const handleApiKeyFocus = () => {
@@ -48,6 +56,8 @@ export function SettingsTab({ capabilities }) {
       price_pro: parseFloat(pricePro) || 0.134,
       data_dir: dataDir,
       upscale_engine: upscaleEngine,
+      seedvr2_use_gguf: seedvr2UseGguf,
+      seedvr2_multi_gpu: seedvr2MultiGpu,
     };
     if (!apiKeyMasked && apiKey) {
       updates.gemini_api_key = apiKey;
@@ -57,6 +67,16 @@ export function SettingsTab({ capabilities }) {
       ok ? 'Settings saved!' : 'Failed to save settings',
       ok ? 'success' : 'error'
     );
+  };
+
+  const handleClearTrash = async () => {
+    setClearingTrash(true);
+    try {
+      const ok = await clearTrash();
+      toast(ok ? 'Trash cleared' : 'Failed to clear trash', ok ? 'success' : 'error');
+    } finally {
+      setClearingTrash(false);
+    }
   };
 
   return (
@@ -173,33 +193,103 @@ export function SettingsTab({ capabilities }) {
         </div>
       </div>
 
-      {/* Upscale Engine preference — only show when SeedVR2 is available */}
-      {capabilities?.seedvr_available && (
+      {/* Upscale Engine preference — show whenever at least one engine is available */}
+      {(capabilities?.upscale_available || capabilities?.seedvr_available) && (
         <div className="flex flex-col gap-2 p-3 bg-bg-card rounded border border-border-default">
           <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
-            Upscale Engine
+            Auto-Upscale Engine
           </div>
-          <div className="flex items-center justify-between">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[13px] text-text-primary">
-                {upscaleEngine === 'seedvr2' ? 'SeedVR2 (Diffusion)' : 'Real-ESRGAN (Traditional)'}
-              </span>
-              <span className="text-[11px] text-text-muted">
-                {upscaleEngine === 'seedvr2'
-                  ? 'Higher quality, slower (2-5 min). Best for AI-generated liveries.'
-                  : 'Fast 4× upscale (~30s). Uses Real-ESRGAN neural network.'}
-              </span>
-            </div>
-            <Toggle
-              checked={upscaleEngine === 'seedvr2'}
-              onChange={(v) => setUpscaleEngine(v ? 'seedvr2' : 'realesrgan')}
-              size="sm"
-            />
+          <div className="flex rounded-lg border border-border-default overflow-hidden">
+            {[
+              {
+                id: 'realesrgan',
+                label: 'Real-ESRGAN',
+                sublabel: 'Fast (~30s)',
+                available: capabilities?.upscale_available,
+                installCmd: '--realesrgan',
+                activeClass: 'bg-accent/15 text-accent border-b-2 border-accent/30',
+              },
+              {
+                id: 'seedvr2',
+                label: 'SeedVR2',
+                sublabel: 'Higher quality (2-5m)',
+                available: capabilities?.seedvr_available,
+                installCmd: '--seedvr',
+                activeClass: 'bg-accent-wine/15 text-accent-wine border-b-2 border-accent-wine/30',
+              },
+            ].map(({ id, label, sublabel, available, installCmd, activeClass }) => (
+              <button
+                key={id}
+                onClick={() => available && setUpscaleEngine(id)}
+                disabled={!available}
+                title={!available ? `Not installed — re-launch with start.bat ${installCmd}` : undefined}
+                className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 px-3 text-[13px] font-medium transition-all border-b ${
+                  !available
+                    ? 'bg-bg-input text-text-muted opacity-40 cursor-not-allowed border-transparent'
+                    : upscaleEngine === id
+                    ? `${activeClass} cursor-pointer`
+                    : 'bg-bg-input text-text-secondary hover:bg-bg-hover border-transparent cursor-pointer'
+                }`}
+              >
+                <span className="text-[13px]">{label}</span>
+                <span className={`text-[10px] font-normal ${upscaleEngine === id && available ? 'opacity-70' : 'text-text-muted'}`}>
+                  {available ? sublabel : `start.bat ${installCmd}`}
+                </span>
+              </button>
+            ))}
           </div>
           <p className="text-[11px] text-text-muted">
-            When enabled, auto-upscale in the Generate tab will use SeedVR2 instead of Real-ESRGAN.
-            You can always use either engine directly from the Upscale tab.
+            Controls which engine is used for auto-upscale in the Generate tab. You can always switch engines directly from the Upscale tab.
           </p>
+
+          {/* SeedVR2 sub-settings — only shown when SeedVR2 is selected */}
+          {upscaleEngine === 'seedvr2' && capabilities?.seedvr_available && (
+            <div className="flex flex-col gap-2 pt-1 border-t border-border-default">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">SeedVR2 Options</div>
+
+              {/* Use GGUF toggle */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[13px] text-text-primary">Use GGUF Model</span>
+                  <span className="text-[11px] text-text-muted">
+                    Quantized 8-bit model — lower VRAM, slightly lower quality. Requires{' '}
+                    <span className="font-mono text-text-secondary">seedvr2_ema_3b-Q8_0.gguf</span> in{' '}
+                    <span className="font-mono text-text-secondary">seedvr2_videoupscaler/models/SEEDVR2/</span>.
+                  </span>
+                </div>
+                <button
+                  onClick={() => setSeedvr2UseGguf(v => !v)}
+                  className={`flex-shrink-0 relative inline-flex h-5 w-9 rounded-full transition-colors ${
+                    seedvr2UseGguf ? 'bg-accent' : 'bg-bg-hover border border-border-default'
+                  }`}
+                >
+                  <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform mt-[3px] ${
+                    seedvr2UseGguf ? 'translate-x-[18px]' : 'translate-x-[3px]'
+                  }`} />
+                </button>
+              </div>
+
+              {/* Multi-GPU toggle */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[13px] text-text-primary">Multi-GPU Mode</span>
+                  <span className="text-[11px] text-text-muted">
+                    Use all detected NVIDIA GPUs in parallel. Only beneficial if you have 2+ compatible GPUs.
+                  </span>
+                </div>
+                <button
+                  onClick={() => setSeedvr2MultiGpu(v => !v)}
+                  className={`flex-shrink-0 relative inline-flex h-5 w-9 rounded-full transition-colors ${
+                    seedvr2MultiGpu ? 'bg-accent' : 'bg-bg-hover border border-border-default'
+                  }`}
+                >
+                  <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform mt-[3px] ${
+                    seedvr2MultiGpu ? 'translate-x-[18px]' : 'translate-x-[3px]'
+                  }`} />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -221,7 +311,51 @@ export function SettingsTab({ capabilities }) {
         </Button>
       </div>
 
+      {/* Trash */}
+      <div className="flex flex-col gap-2 p-3 bg-bg-card rounded border border-border-default">
+        <div className="flex items-center justify-between">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
+            Trash
+          </div>
+          {trashCount > 0 && (
+            <span className="px-2 py-0.5 text-[10px] bg-error/15 text-error rounded-full font-medium">
+              {trashCount} item{trashCount !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+        <p className="text-[11px] text-text-muted">
+          {trashCount > 0
+            ? `${trashCount} deleted liveri${trashCount !== 1 ? 'es' : 'y'} — will be permanently removed after 1 day.`
+            : 'No items in trash. Deleted liveries are kept here for 1 day before permanent removal.'}
+        </p>
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowTrashModal(true)}
+            disabled={trashCount === 0}
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+            </svg>
+            View Trash
+          </Button>
+          {trashCount > 0 && (
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={handleClearTrash}
+              loading={clearingTrash}
+            >
+              Clear Trash
+            </Button>
+          )}
+        </div>
+      </div>
+
       <WipeDataModal isOpen={showWipeModal} onClose={() => setShowWipeModal(false)} />
+      <TrashModal isOpen={showTrashModal} onClose={() => setShowTrashModal(false)} />
     </div>
   );
 }

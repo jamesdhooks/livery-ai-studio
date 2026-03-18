@@ -1,6 +1,7 @@
 import React, { createContext, useContext } from 'react';
 import { useUpscale } from '../hooks/useUpscale';
 import { useToastContext } from './ToastContext';
+import { useServiceError } from '../hooks/useServiceError';
 
 const UpscaleContext = createContext(null);
 
@@ -9,7 +10,8 @@ const UpscaleContext = createContext(null);
  */
 export function UpscaleProvider({ children }) {
   const { toast } = useToastContext();
-  const value = useUpscale({ onNotify: toast });
+  const { showError } = useServiceError();
+  const value = useUpscale({ onNotify: toast, onError: showError });
 
   return (
     <UpscaleContext.Provider value={value}>
