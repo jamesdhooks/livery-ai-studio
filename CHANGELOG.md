@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.9.4-beta] — 2026-03-19
+
+### Fixed
+- **Build from source improvements** — `start.bat` now falls back to `python` directly if py launcher isn't installed; detects missing C++ build tools and warns users before pip install fails
+- **GenerateTab modeState crash** — Fixed crash when session restore missed a mode key; `sanitizeModeState()` now deeply merges incoming session data with defaults, ensuring both 'new' and 'modify' bags always exist and have every required field
+- **Static asset 304 responses** — Flask now returns explicit cache headers: index.html is never cached (no-cache/no-store), `/assets/*.js|css` cached for 1 year (content-hashed filenames), other static files follow same pattern; prevents browser 304 stalls on initial load
+- **Startup validation** — Flask logs a clear error if `static/` directory is missing or `index.html` doesn't exist, advising users to rebuild frontend
+
+### Added
+- **TROUBLESHOOTING.md** — Comprehensive guide covering Python not found, psd-tools build errors, stuck loading screen, module/import errors, Windows-specific issues, and macOS/Linux setup
+
+---
+
 ## [0.9.3-beta] — 2026-03-19
 
 ### Fixed

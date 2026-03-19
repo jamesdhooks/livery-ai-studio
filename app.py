@@ -144,6 +144,19 @@ if _seedvr_repo_dir.exists() and not _gguf_file.exists():
         logger.warning("[GGUF] Failed to download GGUF model on app startup: %s", _e)
 
 # ── Create Flask app ──────────────────────────────────────────────────────────
+# Validate that static directory exists and contains built frontend
+if not STATIC_DIR.exists():
+    logger.error("[STATIC] Directory missing: %s", STATIC_DIR)
+    logger.error("[STATIC] The frontend has not been built. Run: cd frontend && npm run build")
+elif not (STATIC_DIR / "index.html").exists():
+    logger.error("[STATIC] Missing index.html in %s", STATIC_DIR)
+    logger.error("[STATIC] The frontend has not been built. Run: cd frontend && npm run build")
+else:
+    logger.info("[STATIC] Frontend found at %s", STATIC_DIR)
+    # Count asset files for debugging
+    asset_count = len(list((STATIC_DIR / "assets").glob("*"))) if (STATIC_DIR / "assets").exists() else 0
+    logger.info("[STATIC] Assets: %d files", asset_count)
+
 app = Flask(__name__, static_folder=str(STATIC_DIR))
 
 for _bp in (bp_config, bp_cars, bp_files, bp_generate, bp_history, bp_window):
@@ -201,12 +214,23 @@ def _handle_exception(e):
 # ── SPA catch-all ─────────────────────────────────────────────────────────────
 @app.route("/")
 def index():
-    return send_file(STATIC_DIR / "index.html")
+    resp = send_file(STATIC_DIR / "index.html")
+    resp.cache_control.max_age = 0
+    resp.cache_control.no_cache = True
+    resp.cache_control.no_store = True
+    resp.cache_control.must_revalidate = True
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
 
 
 @app.route("/static/<path:filename>")
 def static_files(filename):
-    return send_from_directory(STATIC_DIR, filename)
+    resp = send_from_directory(STATIC_DIR, filename)
+    # Cache static assets for 1 year (they have content hashes in filenames)
+    resp.cache_control.max_age = 31536000  # 1 year
+    resp.cache_control.public = True
+    return resp
 
 
 @app.route("/<path:path>")
@@ -214,8 +238,27 @@ def serve_spa(path):
     """Return the file if it exists; otherwise fall back to index.html (SPA routing)."""
     full = STATIC_DIR / path
     if full.exists() and full.is_file():
-        return send_from_directory(str(STATIC_DIR), path)
-    return send_file(STATIC_DIR / "index.html")
+        resp = send_from_directory(str(STATIC_DIR), path)
+        # If it's in assets/ (hashed), cache long; otherwise no-cache
+        if path.startswith("assets/"):
+            resp.cache_control.max_age = 31536000
+            resp.cache_control.public = True
+        else:
+            resp.cache_control.max_age = 0
+            resp.cache_control.no_cache = True
+            resp.cache_control.no_store = True
+            resp.cache_control.must_revalidate = True
+            resp.headers["Pragma"] = "no-cache"
+            resp.headers["Expires"] = "0"
+        return resp
+    resp = send_file(STATIC_DIR / "index.html")
+    resp.cache_control.max_age = 0
+    resp.cache_control.no_cache = True
+    resp.cache_control.no_store = True
+    resp.cache_control.must_revalidate = True
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
 
 
 # ── Icon helpers ─────────────────────────────────────────────────────────────

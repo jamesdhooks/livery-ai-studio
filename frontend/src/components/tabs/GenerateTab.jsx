@@ -105,30 +105,21 @@ export function GenerateTab({
   const [mode, setMode] = useState('new');
 
   // One state object per mode.  Fields: { prompt, context, referencePaths, referenceContext }
-  // Initialize with empty state — restoration effect will populate from session
-  const [modeState, setModeState] = useState({
-    new: {
-      prompt:           '',
-      context:          '',
-      referencePaths:   [],
-      referenceContext: '',
-    },
-    modify: {
-      prompt:           '',
-      context:          '',
-      referencePaths:   [],
-      referenceContext: '',
-    },
+  // Default (empty) bag shape — used as a fallback when a mode key is missing
+  const EMPTY_MODE_BAG = { prompt: '', context: '', referencePaths: [], referenceContext: '' };
+
+  // Merge an incoming modeState from session with the local defaults.
+  // Ensures both 'new' and 'modify' bags always exist and have every required field.
+  const sanitizeModeState = (incoming) => ({
+    new:    { ...EMPTY_MODE_BAG, ...(incoming?.new    || {}) },
+    modify: { ...EMPTY_MODE_BAG, ...(incoming?.modify || {}) },
   });
 
-  // Convenience: current mode's state bag
-  // Fallback to empty state if mode doesn't exist in modeState (shouldn't happen, but defensive)
-  const ms = modeState[mode] || {
-    prompt: '',
-    context: '',
-    referencePaths: [],
-    referenceContext: '',
-  };
+  // Initialize with empty state — restoration effect will populate from session
+  const [modeState, setModeState] = useState(sanitizeModeState(null));
+
+  // Convenience: current mode's state bag — always a complete object, never undefined
+  const ms = modeState[mode] ?? EMPTY_MODE_BAG;
 
   // Update one field in one mode's bag and persist it to session
   const updateModeField = useCallback((m, field, value) => {
@@ -168,7 +159,7 @@ export function GenerateTab({
     setMode(restoredMode);
     
     if (session.modeState) {
-      setModeState(session.modeState);
+      setModeState(sanitizeModeState(session.modeState));
     }
     
     if (session.last_auto_enhance === true) setAutoEnhance(true);

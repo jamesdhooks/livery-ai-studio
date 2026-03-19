@@ -58,6 +58,8 @@ echo.
 
 :: ?? Find Python 3.10+ ????????????????????????????????????????????????????????
 set "PY_CMD="
+
+:: Try the py launcher first (if installed)
 py -3.14 --version >nul 2>&1
 if %errorlevel%==0 set "PY_CMD=py -3.14"
 if "%PY_CMD%"=="" (
@@ -77,13 +79,41 @@ if "%PY_CMD%"=="" (
     if %errorlevel%==0 set "PY_CMD=py -3.10"
 )
 
+:: Fallback: try 'python' directly if py launcher failed
+if "%PY_CMD%"=="" (
+    python --version >nul 2>&1
+    if %errorlevel%==0 set "PY_CMD=python"
+)
+
 if "%PY_CMD%"=="" (
     echo  [ERROR] No Python 3.10+ found.
     echo  Install Python 3.10+ from https://python.org
+    echo  OR ensure 'python' is in your PATH
     pause
     exit /b 1
 )
 echo  Python found: %PY_CMD%
+
+:: ?? Check for Visual Studio Build Tools (required for psd-tools on Python 3.12+) ?
+echo.
+echo  Checking for C++ build tools...
+where cl.exe >nul 2>&1
+if %errorlevel% neq 0 (
+    where clang.exe >nul 2>&1
+    if %errorlevel% neq 0 (
+        echo  [WARNING] C++ build tools not found. psd-tools may fail to install.
+        echo.
+        echo  To fix, install one of:
+        echo    • Visual Studio 2022 with "Desktop development with C++"
+        echo    • MinGW-w64 and add to PATH
+        echo    • Clang via LLVM
+        echo.
+        echo  Without build tools, pip will try pre-built wheels (may not exist for your Python version^)
+        echo.
+    )
+) else (
+    echo  + C++ build tools found
+)
 
 :: ?? Recreate venv ????????????????????????????????????????????????????????????
 if not exist "%VENV_DIR%" (
@@ -110,10 +140,20 @@ echo  Installing core dependencies...
 "%VENV_DIR%\Scripts\python.exe" -m pip install --upgrade pip
 "%VENV_DIR%\Scripts\pip.exe" install -r "%APP_DIR%requirements.txt"
 if %errorlevel% neq 0 (
+    echo.
     echo  [ERROR] Failed to install dependencies.
+    echo.
+    echo  Common causes:
+    echo    • psd-tools build failed: Install Visual Studio Build Tools with C++ support
+    echo    • Missing Python development headers: Ensure Python was installed correctly
+    echo    • Network error: Check internet connection and try again
+    echo.
+    echo  For help, see: CONTRIBUTING.md or open an issue on GitHub
+    echo.
     pause
     exit /b 1
 )
+
 echo  + Core dependencies installed
 
 "%VENV_DIR%\Scripts\pip.exe" install "pywin32>=306"
