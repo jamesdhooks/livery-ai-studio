@@ -122,7 +122,13 @@ export function GenerateTab({
   });
 
   // Convenience: current mode's state bag
-  const ms = modeState[mode];
+  // Fallback to empty state if mode doesn't exist in modeState (shouldn't happen, but defensive)
+  const ms = modeState[mode] || {
+    prompt: '',
+    context: '',
+    referencePaths: [],
+    referenceContext: '',
+  };
 
   // Update one field in one mode's bag and persist it to session
   const updateModeField = useCallback((m, field, value) => {
@@ -239,18 +245,32 @@ export function GenerateTab({
 
   const handlePromptChange = (value) => {
     console.log('[FRONTEND_HANDLER] handlePromptChange called, value:', value.substring(0, 40));
+    // Ensure modeState has entry for current mode
+    const modeEntry = modeState[mode] || {
+      prompt: '',
+      context: '',
+      referencePaths: [],
+      referenceContext: '',
+    };
     const updated = {
       ...modeState,
-      [mode]: { ...modeState[mode], prompt: value },
+      [mode]: { ...modeEntry, prompt: value },
     };
     setModeState(updated);
     debouncedSaveModeState?.(updated, 500);
   };
 
   const handleContextChange = (value) => {
+    // Ensure modeState has entry for current mode
+    const modeEntry = modeState[mode] || {
+      prompt: '',
+      context: '',
+      referencePaths: [],
+      referenceContext: '',
+    };
     const updated = {
       ...modeState,
-      [mode]: { ...modeState[mode], context: value },
+      [mode]: { ...modeEntry, context: value },
     };
     setModeState(updated);
     debouncedSaveModeState?.(updated, 500);
@@ -289,16 +309,16 @@ export function GenerateTab({
 
   const handleReferenceUpload = async (file) => {
     const result = await onUploadFile?.('reference', file, carMeta);
-    if (result?.path) {
-      const newPaths = [...ms.referencePaths, result.path];
+    if (result?.path && ms) {
+      const newPaths = [...(ms.referencePaths || []), result.path];
         updateModeField(mode, 'referencePaths', newPaths);
     }
   };
 
   const handleClearReference = (path) => {
-    const newPaths = ms.referencePaths.filter((p) => p !== path);
+    const newPaths = (ms?.referencePaths || []).filter((p) => p !== path);
     updateModeField(mode, 'referencePaths', newPaths);
-    if (newPaths.length === 0 && ms.referenceContext) {
+    if (newPaths.length === 0 && ms?.referenceContext) {
       updateModeField(mode, 'referenceContext', '');
     }
   };
@@ -313,21 +333,22 @@ export function GenerateTab({
 
   // Browse modal handlers
   const handleBrowseSelect = (item) => {
-    if (!browseCategory) return;
+    if (!browseCategory || !ms) return;
     if (browseCategory === 'wire') {
       setWireOverride?.(item.path);
     } else if (browseCategory === 'base') {
       setBaseOverride?.(item.path);
     } else if (browseCategory === 'reference') {
-      if (!ms.referencePaths.includes(item.path)) {
-        const newPaths = [...ms.referencePaths, item.path];
+      const refPaths = ms.referencePaths || [];
+      if (!refPaths.includes(item.path)) {
+        const newPaths = [...refPaths, item.path];
         updateModeField(mode, 'referencePaths', newPaths);
       }
     }
   };
 
   const handleEnhance = async () => {
-    if (!ms.prompt.trim() || enhancing) return;
+    if (!ms?.prompt?.trim() || enhancing) return;
     setEnhancing(true);
     try {
       const enhanced = await onEnhancePrompt?.(ms.prompt.trim(), ms.context.trim(), mode);
@@ -339,7 +360,7 @@ export function GenerateTab({
     }
   };
 
-  const canGenerate = selectedCar && ms.prompt.trim() && !generating;
+  const canGenerate = selectedCar && ms?.prompt?.trim() && !generating;
 
   const handleGenerate = async () => {
     if (!canGenerate) return;
@@ -617,9 +638,15 @@ export function GenerateTab({
                   value={ms.referenceContext}
                   onChange={(e) => {
                     const value = e.target.value;
+                    const modeEntry = modeState[mode] || {
+                      prompt: '',
+                      context: '',
+                      referencePaths: [],
+                      referenceContext: '',
+                    };
                     const updated = {
                       ...modeState,
-                      [mode]: { ...modeState[mode], referenceContext: value },
+                      [mode]: { ...modeEntry, referenceContext: value },
                     };
                     setModeState(updated);
                     debouncedSaveModeState?.(updated, 500);
