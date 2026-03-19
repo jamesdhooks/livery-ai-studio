@@ -23,6 +23,7 @@ REM ═════════════════════════�
 setlocal enabledelayedexpansion
 set "SCRIPT_DIR=%~dp0"
 cd /d "!SCRIPT_DIR!"
-call "%SCRIPT_DIR%start.bat" --realesrgan --seedvr --web-only --build-frontend
+@REM call "%SCRIPT_DIR%start.bat" --realesrgan --seedvr --web-only --build-frontend
+call "%SCRIPT_DIR%start.bat" --realesrgan --seedvr --build-frontend
 @REM call "%SCRIPT_DIR%start.bat" --realesrgan --seedvr --web-only --build-frontend 
 

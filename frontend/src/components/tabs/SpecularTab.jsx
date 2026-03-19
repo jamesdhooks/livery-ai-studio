@@ -224,10 +224,13 @@ export function SpecularTab({
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-accent mt-0.5 flex-shrink-0">
                   <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
                 </svg>
-                <p className="text-[12px] text-accent/90 leading-snug">
-                  Specular maps control surface shininess and reflectivity in iRacing. Deploy as{' '}
-                  <code className="font-mono text-[11px]">car_spec_&lt;id&gt;.tga</code>.
-                </p>
+                <div className="flex flex-col gap-1">
+                  <p className="text-[12px] text-accent/90 leading-snug font-semibold">Experimental Feature</p>
+                  <p className="text-[12px] text-accent/90 leading-snug">
+                    Specular maps control surface shininess and reflectivity. Results may vary — success rates are low. Deploy as{' '}
+                    <code className="font-mono text-[11px]">car_spec_&lt;id&gt;.tga</code>.
+                  </p>
+                </div>
               </div>
 
               {/* Warning: no customer ID */}

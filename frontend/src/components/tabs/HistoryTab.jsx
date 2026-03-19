@@ -50,6 +50,7 @@ export function HistoryTab({
   const [selectedId, setSelectedId] = useState(null);
   const [fullResUrl, setFullResUrl] = useState(null);
   const [loadingFullRes, setLoadingFullRes] = useState(false);
+  const [compareEnabled, setCompareEnabled] = useState(false);
   const [editingCar, setEditingCar] = useState(false);
   const [carSearch, setCarSearch] = useState('');
   const carDropdownRef = useRef(null);
@@ -160,11 +161,21 @@ export function HistoryTab({
   useEffect(() => {
     if (selectedItem) {
       setFullResUrl(null);
+      setCompareEnabled(false);
       loadFullRes(selectedItem);
     } else {
       setFullResUrl(null);
+      setCompareEnabled(false);
     }
   }, [selectedId, selectedItem?.livery_path]);
+
+  // Compute source preview URL for upscaled/resampled items
+  const sourceBeforeUrl = (() => {
+    const sourcePath = selectedItem?.source_livery_path || selectedItem?.source_path;
+    if (!sourcePath) return null;
+    if (!selectedItem.upscaled && !selectedItem.resampled) return null;
+    return `/api/uploads/preview?path=${encodeURIComponent(sourcePath)}`;
+  })();
 
   // ── Scroll position persistence ────────────────────────────────────────────
   // Restore scroll position after items load
@@ -270,11 +281,21 @@ export function HistoryTab({
 
   const isProModel = selectedItem?.model?.toLowerCase().includes('pro');
   const isSpecItem = selectedItem?.entry_type === 'spec' || selectedItem?.mode === 'spec';
+  const isUpscaleItem = selectedItem?.entry_type === 'upscale';
+  const isResampleItem = selectedItem?.entry_type === 'resample';
+
+  const typeLabel = isSpecItem ? 'Spec Map'
+    : isUpscaleItem ? 'Upscaled'
+    : isResampleItem ? 'Resampled'
+    : 'Livery';
+  const typeClass = isSpecItem ? 'text-success'
+    : (isUpscaleItem || isResampleItem) ? 'text-accent-wine'
+    : 'text-text-primary';
 
   const meta = selectedItem
     ? [
         { label: 'Car', value: selectedItem.display_name || selectedItem.car_folder, onEdit: onUpdateItemCar ? () => setEditingCar(true) : undefined },
-        { label: 'Type', value: isSpecItem ? 'Spec Map' : 'Livery', className: isSpecItem ? 'text-success' : 'text-text-primary' },
+        { label: 'Type', value: typeLabel, className: typeClass },
         { label: 'Model', value: selectedItem.model || '—', className: isProModel ? 'text-accent-wine' : 'text-accent' },
         { label: 'Resolution', value: selectedItem.resolution_2k ? '2K (2048×2048)' : '1K (1024×1024)', className: isProModel ? 'text-accent-wine/80' : 'text-accent/80' },
         { label: 'Cost', value: selectedItem.cost != null ? `$${parseFloat(selectedItem.cost).toFixed(4)}` : '—', className: 'text-warning' },
@@ -380,6 +401,9 @@ export function HistoryTab({
                 onDelete={() => { onDelete?.(selectedItem.id); setSelectedId(null); }}
                 onNotify={onNotify}
                 onSwitchTab={onSwitchTab}
+                beforeUrl={sourceBeforeUrl}
+                compareEnabled={compareEnabled}
+                onToggleCompare={sourceBeforeUrl ? () => setCompareEnabled(v => !v) : undefined}
               />
               {/* ── Inline car edit dropdown ───────────────────────────── */}
               {editingCar && (
@@ -478,6 +502,38 @@ export function HistoryTab({
                   </div>
                 </div>
               )}
+              {/* ── Upscaled versions panel ─────────────────────────────── */}
+              {selectedItem.upscaled_versions?.length > 0 && (
+                <div className="flex-shrink-0 border-t border-border-default bg-bg-panel px-4 py-3">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-2">
+                    Upscaled Versions ({selectedItem.upscaled_versions.length})
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedItem.upscaled_versions.map((upPath, idx) => {
+                      const upItem = items.find((i) => i.livery_path === upPath);
+                      const label = upItem
+                        ? formatTimestamp((upItem.timestamp || 0) * 1000)
+                        : getFilename(upPath);
+                      const isResample = upItem?.entry_type === 'resample' || upItem?.resampled;
+                      return (
+                        <button
+                          key={upPath}
+                          title={upPath}
+                          onClick={() => upItem && setSelectedId(upItem.id)}
+                          disabled={!upItem}
+                          className="flex items-center gap-1.5 px-2 py-1 rounded border border-accent-wine/40 bg-accent-wine/5 text-[11px] text-accent-wine hover:bg-accent-wine/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="opacity-70">
+                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                          </svg>
+                          {isResample ? 'Resample' : 'Upscale'} {idx + 1}
+                          {label && <span className="text-accent-wine/60">— {label}</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               {/* ── Source livery link (for spec items) ───────────────── */}
               {isSpecItem && selectedItem.source_livery_path && (
                 <div className="flex-shrink-0 border-t border-border-default bg-bg-panel px-4 py-3">
@@ -506,30 +562,37 @@ export function HistoryTab({
                   })()}
                 </div>
               )}
-              {/* ── Source livery link (for modify/iterate items) ──────── */}
-              {!isSpecItem && selectedItem.source_livery_path && (
+              {/* ── Source livery link (for modify/iterate/upscale/resample items) ── */}
+              {!isSpecItem && (selectedItem.source_livery_path || selectedItem.source_path) && (
                 <div className="flex-shrink-0 border-t border-border-default bg-bg-panel px-4 py-3">
                   <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1.5">
-                    Based On
+                    {(isUpscaleItem || isResampleItem) ? 'Source Livery' : 'Based On'}
                   </div>
                   {(() => {
+                    const srcPath = selectedItem.source_livery_path || selectedItem.source_path;
                     const srcItem = items.find(
-                      (i) => i.livery_path === selectedItem.source_livery_path
+                      (i) => i.livery_path === srcPath
                     );
+                    const borderClass = (isUpscaleItem || isResampleItem)
+                      ? 'border-accent-wine/40 bg-accent-wine/5 text-accent-wine hover:bg-accent-wine/10'
+                      : 'border-warning/40 bg-warning/5 text-warning hover:bg-warning/10';
                     return (
                       <button
-                        title={selectedItem.source_livery_path}
+                        title={srcPath}
                         onClick={() => srcItem && setSelectedId(srcItem.id)}
                         disabled={!srcItem}
-                        className="flex items-center gap-1.5 px-2 py-1 rounded border border-warning/40 bg-warning/5 text-[11px] text-warning hover:bg-warning/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className={`flex items-center gap-1.5 px-2 py-1 rounded border text-[11px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${borderClass}`}
                       >
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="17 1 21 5 17 9" /><path d="M3 11V9a4 4 0 014-4h14" />
-                          <polyline points="7 23 3 19 7 15" /><path d="M21 13v2a4 4 0 01-4 4H3" />
+                          {(isUpscaleItem || isResampleItem) ? (
+                            <><path d="M15 3h6v6M10 14L21 3M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" /></>
+                          ) : (
+                            <><polyline points="17 1 21 5 17 9" /><path d="M3 11V9a4 4 0 014-4h14" /><polyline points="7 23 3 19 7 15" /><path d="M21 13v2a4 4 0 01-4 4H3" /></>
+                          )}
                         </svg>
                         {srcItem
                           ? `${srcItem.display_name || srcItem.car_folder} — ${formatTimestamp((srcItem.timestamp || 0) * 1000)}`
-                          : getFilename(selectedItem.source_livery_path)}
+                          : getFilename(srcPath)}
                       </button>
                     );
                   })()}
@@ -592,6 +655,9 @@ function HistoryCard({ item, selected, checked, selectMode, onClick, onDeploy, d
   const modelLabel = item.model?.includes('pro') ? 'Pro' : item.model?.includes('flash') ? 'Flash' : null;
   const modeLabel = item.mode === 'iterate' ? 'Iterate' : item.mode === 'modify' ? 'Modify' : null;
   const isSpecItem = item.entry_type === 'spec' || item.mode === 'spec';
+  const isUpscaleTabItem = item.entry_type === 'upscale';
+  const isResampleTabItem = item.entry_type === 'resample';
+  const isAutoUpscaled = item.upscaled && !isUpscaleTabItem && !isResampleTabItem;
   const resLabel = item.resolution_2k ? '2K' : '1K';
 
   return (
@@ -667,8 +733,15 @@ function HistoryCard({ item, selected, checked, selectMode, onClick, onDeploy, d
             </span>
           )}
           {item.upscaled && (
-            <span className="px-1 py-0.5 text-[8px] font-bold uppercase rounded text-white bg-accent-wine/70">
-              Upscaled
+            <span className={`px-1 py-0.5 text-[8px] font-bold uppercase rounded text-white ${
+              isUpscaleTabItem ? 'bg-accent-wine/80' : 'bg-accent-wine/50'
+            }`}>
+              {isUpscaleTabItem ? 'Upscaled' : '4×'}
+            </span>
+          )}
+          {isResampleTabItem && (
+            <span className="px-1 py-0.5 text-[8px] font-bold uppercase rounded text-white bg-accent-wine/80">
+              Resampled
             </span>
           )}
         </div>

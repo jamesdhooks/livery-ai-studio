@@ -115,6 +115,7 @@ from server.routes.api_cars     import bp as bp_cars
 from server.routes.api_files    import bp as bp_files
 from server.routes.api_generate import bp as bp_generate
 from server.routes.api_history  import bp as bp_history
+from server.routes.api_monitor  import bp as bp_monitor
 from server.routes.api_window   import bp as bp_window
 
 logger.info("All imports OK")
@@ -159,7 +160,7 @@ else:
 
 app = Flask(__name__, static_folder=str(STATIC_DIR))
 
-for _bp in (bp_config, bp_cars, bp_files, bp_generate, bp_history, bp_window):
+for _bp in (bp_config, bp_cars, bp_files, bp_generate, bp_history, bp_monitor, bp_window):
     app.register_blueprint(_bp)
 
 logger.info("Flask blueprints registered")

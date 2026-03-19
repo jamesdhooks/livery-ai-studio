@@ -91,6 +91,14 @@ function IconGpu({ className = '' }) {
   );
 }
 
+function IconFolder({ className = '' }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
+    </svg>
+  );
+}
+
 function IconPaintbrush({ className = '' }) {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -648,6 +656,97 @@ export function GettingStartedTab() {
                 <li>Iterate with Modify mode and small, targeted changes rather than rewriting the full prompt — e.g. <em>"move the logo from the roof to the hood"</em> or <em>"change the red stripe to gold"</em></li>
                 <li>For the cheapest high-quality workflow: use Flash model + GPU Upscale</li>
               </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Monitor Folder Guide */}
+        <div className="bg-bg-card border border-border-default rounded-lg p-5">
+          <SectionHeading icon={<IconFolder />} title="Monitor Folder — Live Auto-Deploy" />
+          <p className="text-[12px] text-text-secondary mb-4">
+            The <strong className="text-text-primary">Monitor Folder</strong> feature lets you edit your livery
+            in an external image editor and have it automatically deployed to iRacing every time you save —
+            no manual redeploy needed.
+          </p>
+
+          <div className="space-y-4">
+            {/* What it does */}
+            <div className="bg-bg-input rounded p-4 space-y-2">
+              <p className="text-[12px] font-semibold text-text-primary">How it works</p>
+              <ol className="text-[12px] text-text-secondary space-y-1.5 ml-4 list-decimal leading-relaxed">
+                <li>
+                  Select your car in the sub-bar, then click{' '}
+                  <strong className="text-text-primary">Monitor Folder</strong> (next to the car picker).
+                </li>
+                <li>
+                  Pick or type the folder path where your livery TGA files live — typically the same
+                  folder you use in your image editor when exporting.
+                </li>
+                <li>
+                  The app immediately deploys any matching files that already exist in the folder,
+                  then watches for changes in the background.
+                </li>
+                <li>
+                  Every time you save{' '}
+                  <code className="bg-bg-card px-1 rounded text-[12px] text-accent font-mono">car_&#123;id&#125;.tga</code>{' '}
+                  or{' '}
+                  <code className="bg-bg-card px-1 rounded text-[12px] text-accent font-mono">car_spec_&#123;id&#125;.tga</code>{' '}
+                  to that folder, the file is immediately copied to your iRacing paint folder.
+                </li>
+                <li>
+                  A notification toast confirms each auto-deploy. Click{' '}
+                  <strong className="text-text-primary">Stop</strong> (in the sub-bar) to end monitoring.
+                </li>
+              </ol>
+            </div>
+
+            {/* File naming */}
+            <div className="bg-bg-input rounded p-4 space-y-2">
+              <p className="text-[12px] font-semibold text-text-primary">File naming</p>
+              <p className="text-[12px] text-text-secondary">
+                The monitor looks for these exact filenames using your iRacing Customer ID from Settings:
+              </p>
+              <div className="mt-2 space-y-1">
+                <div className="flex items-center gap-2">
+                  <code className="bg-bg-card px-2 py-0.5 rounded text-[12px] text-accent font-mono">car_&#123;customerID&#125;.tga</code>
+                  <span className="text-[11px] text-text-muted">— main diffuse livery</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <code className="bg-bg-card px-2 py-0.5 rounded text-[12px] text-accent font-mono">car_spec_&#123;customerID&#125;.tga</code>
+                  <span className="text-[11px] text-text-muted">— specular / reflectivity map (optional)</span>
+                </div>
+              </div>
+              <p className="text-[11px] text-text-muted mt-2">
+                For example, if your Customer ID is <code className="bg-bg-card px-1 rounded text-accent font-mono">123456</code>,
+                save your file as <code className="bg-bg-card px-1 rounded text-accent font-mono">car_123456.tga</code> in the monitored folder.
+              </p>
+            </div>
+
+            {/* Typical workflow */}
+            <div className="bg-accent/5 border border-accent/20 rounded p-4 space-y-2">
+              <p className="text-[12px] font-semibold text-accent flex items-center gap-1.5">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 18h6" /><path d="M10 22h4" /><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0018 8 6 6 0 006 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 018.91 14" />
+                </svg>
+                Recommended workflow with an external editor
+              </p>
+              <ol className="text-[12px] text-text-secondary space-y-1 ml-4 list-decimal leading-relaxed">
+                <li>Generate a livery in the Generate tab as a starting point.</li>
+                <li>Download the TGA and open it in Photoshop, GIMP, or Affinity Photo alongside the car's UV template.</li>
+                <li>In the app, start Monitor Folder and point it at the folder where you're saving your edits.</li>
+                <li>Make a change in your editor, export/save as <code className="bg-bg-card px-1 rounded text-accent font-mono">car_&#123;id&#125;.tga</code> — it deploys instantly.</li>
+                <li>Switch to iRacing and hit <em>Ctrl+R</em> to reload textures. Your edit is live.</li>
+              </ol>
+            </div>
+
+            <div className="bg-warning/5 border border-warning/20 rounded p-3 flex items-start gap-2.5">
+              <IconAlertTriangle className="text-warning flex-shrink-0 mt-0.5 w-3.5 h-3.5" />
+              <p className="text-[12px] text-text-secondary leading-relaxed">
+                <strong className="text-text-primary">Customer ID required:</strong>{' '}
+                Make sure your iRacing Customer ID is saved in{' '}
+                <strong className="text-text-primary">Settings</strong> before starting the monitor.
+                The monitor uses this ID to build the expected filenames and will show an error if it is missing.
+              </p>
             </div>
           </div>
         </div>

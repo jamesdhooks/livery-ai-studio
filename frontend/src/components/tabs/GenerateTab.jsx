@@ -183,9 +183,27 @@ export function GenerateTab({
   // Regenerate: switch to new mode and load the result's prompt/context into the new bag
   useEffect(() => {
     if (!regenerateData) return;
+
+    const data =
+      typeof regenerateData === 'string'
+        ? { prompt: regenerateData, context: '' }
+        : regenerateData;
+
+    if (!data || typeof data !== 'object') {
+      onRegenerateDataUsed?.();
+      return;
+    }
+
     setMode('new');
     setModeState(prev => {
-      const updated = { ...prev, new: { ...prev.new, prompt: regenerateData.prompt || '', context: regenerateData.context || '' } };
+      const updated = {
+        ...prev,
+        new: {
+          ...prev.new,
+          prompt: data?.prompt ?? '',
+          context: data?.context ?? '',
+        },
+      };
       saveSession?.({ modeState: updated });
       return updated;
     });
@@ -734,7 +752,7 @@ export function GenerateTab({
                 <div className="text-[13px] font-medium text-text-primary flex items-center gap-1">Auto-iterate <InfoTooltip position="right" maxWidth={260} text="When enabled, the most recently generated livery is automatically used as the base texture for the next generation — so you can keep refining without manually re-uploading." /></div>
                 <div className="text-[10px] text-text-muted">Loads result as base for next generation</div>
               </div>
-              <Toggle checked={iterateEnabled} onChange={setIterateEnabled} id="iterateToggle" />
+              <Toggle checked={iterateEnabled} onChange={setIterateEnabled} id="iterateToggle" size="sm" />
             </div>
           )}
 

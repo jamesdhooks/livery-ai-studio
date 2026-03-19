@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.9.5-beta] — 2026-03-19
+
+### Added
+- **Folder Monitor — Live Auto-Deploy** — Watch a user-specified folder for `car_{id}.tga` and `car_spec_{id}.tga` files; automatically deploy them to iRacing paint folder whenever saved. Uses polling-based file watcher (no external dependencies, works reliably through Photoshop/GIMP save-over behavior). Real-time status updates via SSE event stream
+- **MonitorService** — Service layer for `/api/monitor/*` endpoints; manages lifecycle (start, stop, status)
+- **useMonitor hook** — Wraps MonitorService with state management; tracks active path, customer_id, file sync status
+- **MonitorContext** — Provides `useMonitorContext()` for app-wide monitor state; composed in AppProvider
+- **`/api/monitor/start`** — POST endpoint to start monitoring a folder for a specific customer_id; validates path exists and starts polling thread
+- **`/api/monitor/stop`** — POST endpoint to stop active monitor
+- **`/api/monitor/status`** — GET endpoint returning current monitor state (active, path, customer_id, file status)
+- **`/api/monitor/events` SSE** — Server-sent events stream for real-time file sync notifications during monitoring
+- **SubBar Monitor status pill** — Shows active monitor path, real-time file count, and sync indicator; displays as blue activity pill when monitoring is active; click Stop to deactivate
+- **GettingStartedTab Monitor guide** — New section explaining the Monitor Folder feature with step-by-step setup and use-case examples (live Photoshop editing)
+
+### Fixed
+- **Monitor Folder picker** — Now uses native file dialog via `upscaleService.pickFolder()` instead of falling back to text prompt; consistent with Settings folder picker behavior
+- **GenerateTab regenerateData type handling** — Fixed crash when `regenerateData` is a string (prompt-only) instead of object; now checks type and safely converts string to `{prompt, context: ''}` structure
+
+---
+
 ## [0.9.4-beta] — 2026-03-19
 
 ### Fixed

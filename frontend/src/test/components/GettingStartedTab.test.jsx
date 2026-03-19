@@ -75,7 +75,7 @@ describe('GettingStartedTab component', () => {
   it('renders the workflow and disclaimer notice', () => {
     render(<GettingStartedTab />);
     expect(screen.getByText(/AI output is a starting point/i)).toBeInTheDocument();
-    expect(screen.getByText(/Recommended workflow/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Recommended workflow/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Gemini API costs — your responsibility/i)).toBeInTheDocument();
     expect(screen.getByText(/Content & intellectual property/i)).toBeInTheDocument();
   });

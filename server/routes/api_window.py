@@ -109,3 +109,27 @@ def log_path():
     from server.config import APP_DIR
     path = APP_DIR / "app.log"
     return jsonify({"path": str(path), "exists": path.exists()})
+
+
+@bp.route("/api/window/pick-folder", methods=["POST"])
+def window_pick_folder():
+    """
+    Open a native folder-picker dialog via pywebview.
+    Returns { "path": "<absolute_folder_path>" } or { "path": null } if cancelled.
+    Falls back gracefully when running in web-only / browser mode.
+    """
+    try:
+        import webview
+        win = webview.windows[0] if webview.windows else None
+        if win:
+            result = win.create_file_dialog(
+                webview.FOLDER_DIALOG,
+                allow_multiple=False,
+            )
+            if result and len(result) > 0:
+                return jsonify({"path": result[0]})
+            return jsonify({"path": None})
+    except Exception:
+        pass
+    # Not running under pywebview — caller should fall back to a text prompt
+    return jsonify({"path": None, "fallback": True})

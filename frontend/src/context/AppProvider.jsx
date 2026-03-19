@@ -8,6 +8,7 @@ import { SpendingProvider } from './SpendingContext';
 import { GenerateProvider } from './GenerateContext';
 import { UpscaleProvider } from './UpscaleContext';
 import { SpecularProvider } from './SpecularContext';
+import { MonitorProvider } from './MonitorContext';
 import { ServiceErrorProvider } from './ServiceErrorContext.jsx';
 
 /**
@@ -45,7 +46,9 @@ export function AppProvider({ children }) {
                   <GenerateProvider>
                     <UpscaleProvider>
                       <SpecularProvider>
-                        {children}
+                        <MonitorProvider>
+                          {children}
+                        </MonitorProvider>
                       </SpecularProvider>
                     </UpscaleProvider>
                   </GenerateProvider>

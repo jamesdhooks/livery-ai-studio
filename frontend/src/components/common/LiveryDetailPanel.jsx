@@ -479,16 +479,21 @@ export function LiveryDetailPanel({
             <>
               <Divider />
               <div className="flex items-center gap-1">
-                <IconBtn
-                  title={compareEnabled ? 'Hide before/after comparison' : 'Show before/after comparison'}
+                <button
+                  title={compareEnabled ? 'Hide before/after wipe comparison' : 'Drag to compare before/after with source livery'}
                   onClick={onToggleCompare}
-                  active={compareEnabled}
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded text-[11px] font-medium transition-colors cursor-pointer whitespace-nowrap ${
+                    compareEnabled
+                      ? 'text-accent bg-accent/15 hover:bg-accent/25'
+                      : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+                  }`}
                 >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="3" y="3" width="18" height="18" rx="2" />
                     <line x1="12" y1="3" x2="12" y2="21" />
                   </svg>
-                </IconBtn>
+                  Compare
+                </button>
                 {compareEnabled && hasNoiseSource && onSetCompareSource && (
                   <div className="flex items-center rounded border border-border-default overflow-hidden text-[10px]">
                     <button

@@ -46,6 +46,51 @@ def get_trash_dir() -> Path:
 bp = Blueprint("api_history", __name__)
 
 
+# ── Livery linking helper ─────────────────────────────────────────────────────
+
+def link_to_source(
+    child_path: Path,
+    child_sidecar: dict,
+    source_path_str: str,
+    *,
+    back_link_key: str = "upscaled_versions",
+) -> None:
+    """
+    Bidirectional link: writes ``source_livery_path`` on the child sidecar
+    and appends the child's path to the source sidecar's ``back_link_key`` list.
+
+    Parameters
+    ----------
+    child_path       : The child livery's .tga Path.
+    child_sidecar    : The child sidecar dict (will be mutated in-place).
+    source_path_str  : Absolute path string to the source .tga.
+    back_link_key    : Key on the source sidecar to append the child path to.
+    """
+    liveries_dir = get_liveries_dir()
+    source_path  = Path(source_path_str).resolve()
+
+    # 1. Forward link on child
+    child_sidecar["source_livery_path"] = str(source_path)
+
+    # 2. Back link on source sidecar
+    for json_file in liveries_dir.glob("*.json"):
+        if json_file.resolve() == child_path.with_suffix(".json").resolve():
+            continue  # skip our own sidecar
+        try:
+            entry = json.loads(json_file.read_text(encoding="utf-8"))
+            entry_livery = entry.get("livery_path") or str(json_file.with_suffix(".tga"))
+            if Path(entry_livery).resolve() == source_path:
+                links: list = entry.get(back_link_key, [])
+                if str(child_path) not in links:
+                    links.append(str(child_path))
+                entry[back_link_key] = links
+                json_file.write_text(json.dumps(entry, indent=2), encoding="utf-8")
+                print(f"[link] Linked {child_path.name} → {json_file.name} [{back_link_key}]")
+                break
+        except Exception as link_err:
+            print(f"[link] Warning: could not patch {json_file.name}: {link_err}")
+
+
 # ── History ───────────────────────────────────────────────────────────────────
 
 @bp.route("/api/history", methods=["GET"])
@@ -113,9 +158,10 @@ def api_history():
                     "wireframe_path", "base_texture_path", "auto_deploy",
                     "api_requests", "estimated_cost", "cost_breakdown",
                     "conversation_log", "generated_at", "entry_type",
-                    "source_livery_path", "spec_maps", "iterations",
+                    "source_livery_path", "source_path",
+                    "spec_maps", "iterations", "upscaled_versions",
                     "upscaled", "upscale_engine", "resampled", "resample_engine",
-                    "source_path", "resolution_2k"):
+                    "resolution_2k"):
             if key in meta:
                 item[key] = meta[key]
 
@@ -636,9 +682,9 @@ def api_upscale():
             if source_sidecar.exists():
                 try:
                     source_meta = json.loads(source_sidecar.read_text(encoding="utf-8"))
-                    # Inherit key fields
+                    # Inherit key fields (skip entry_type — we set our own)
                     for key in ("prompt", "mode", "model", "car", "car_folder", "customer_id",
-                                "display_name", "conversation_log", "generated_at", "entry_type",
+                                "display_name", "conversation_log", "generated_at",
                                 "resolution_2k"):
                         if key in source_meta:
                             meta[key] = source_meta[key]
@@ -646,9 +692,18 @@ def api_upscale():
                     print(f"[upscale] Warning: couldn't read source sidecar: {e}")
             
             # Add upscale-specific metadata
-            meta["upscaled"] = True
+            meta["entry_type"]     = "upscale"
+            meta["upscaled"]       = True
             meta["upscale_engine"] = engine
-            meta["source_path"] = str(src)
+            meta["source_path"]    = str(src)  # legacy compat
+
+            # Bidirectional link to source livery
+            link_to_source(
+                child_path=out_path,
+                child_sidecar=meta,
+                source_path_str=str(src),
+                back_link_key="upscaled_versions",
+            )
             
             sidecar_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
         except Exception as sc_err:
@@ -818,9 +873,9 @@ def api_resample():
             if source_sidecar.exists():
                 try:
                     source_meta = json.loads(source_sidecar.read_text(encoding="utf-8"))
-                    # Inherit key fields
+                    # Inherit key fields (skip entry_type — we set our own)
                     for key in ("prompt", "mode", "model", "car", "car_folder", "customer_id",
-                                "display_name", "conversation_log", "generated_at", "entry_type",
+                                "display_name", "conversation_log", "generated_at",
                                 "resolution_2k"):
                         if key in source_meta:
                             meta[key] = source_meta[key]
@@ -828,9 +883,18 @@ def api_resample():
                     print(f"[resample] Warning: couldn't read source sidecar: {e}")
             
             # Add resample-specific metadata
-            meta["resampled"]      = True
+            meta["entry_type"]      = "resample"
+            meta["resampled"]       = True
             meta["resample_engine"] = engine
-            meta["source_path"]    = str(src)
+            meta["source_path"]     = str(src)  # legacy compat
+
+            # Bidirectional link to source livery
+            link_to_source(
+                child_path=out_path,
+                child_sidecar=meta,
+                source_path_str=str(src),
+                back_link_key="upscaled_versions",
+            )
             meta["downsample_size"] = downsample_size
             meta["upsample_size"]  = upsample_size
             meta["final_2k"]       = final_2k
