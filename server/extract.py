@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 # ── App root (works both from source and as a PyInstaller onedir bundle) ──────
 # PyInstaller 6+ (onedir): bundled data lives in _internal/ (_MEIPASS), not
-# next to the .exe.  car_library and livery_map.json are read-only bundle data.
+# next to the .exe.  library and livery_map.json are read-only bundle data.
 _BUNDLE_DIR: Path = (
     Path(sys._MEIPASS)
     if getattr(sys, "frozen", False)
@@ -49,7 +49,8 @@ _BUNDLE_DIR: Path = (
 )
 
 # ── Library root ──────────────────────────────────────────────────────────────
-LIBRARY_DIR = _BUNDLE_DIR / "car_library"
+LIBRARY_ROOT = _BUNDLE_DIR / "library"
+LIBRARY_DIR = LIBRARY_ROOT / "cars"
 
 # ── Trading Paints folder map (populated from livery_map.json if present) ─────
 _LIVERY_MAP: dict[str, dict] = {}  # lower-normalised key -> {"folder": ..., "display": ...}

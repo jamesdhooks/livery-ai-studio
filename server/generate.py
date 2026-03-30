@@ -90,7 +90,7 @@ def get_image_mime_type(path: str) -> str:
 
 def build_prompt(
     user_prompt: str,
-    mode: str = "new",           # "new" | "modify" | "iterate"
+    mode: str = "new",           # "new" | "modify" | "iterate" | "raw" | "helmet" | "suit"
     has_wireframe: bool = True,
     has_base: bool = False,
     car_display: str = "",
@@ -103,7 +103,30 @@ def build_prompt(
     mode="new"      → generate a brand-new livery design
     mode="modify"   → apply targeted changes to the provided base texture
     mode="iterate"  → refine/iterate on a previously generated livery
+    mode="raw"      → pass prompt+context through as-is with zero system wrapping
+    mode="helmet"   → generate a racing helmet texture
+    mode="suit"     → generate a racing suit texture
     """
+
+    # ── Raw mode: zero system prompting — just concatenate context + prompt ──
+    if mode == "raw":
+        if reference_context and reference_context.strip():
+            return f"{reference_context.strip()}\n\n{user_prompt}"
+        return user_prompt
+
+    # ── Helmet / Suit modes — separate prompt pipelines ──────────────────────
+    if mode == "helmet":
+        return _build_helmet_prompt(
+            user_prompt, has_wireframe=has_wireframe, has_base=has_base,
+            has_reference=has_reference, reference_count=reference_count,
+            reference_context=reference_context,
+        )
+    if mode == "suit":
+        return _build_suit_prompt(
+            user_prompt, has_wireframe=has_wireframe, has_base=has_base,
+            has_reference=has_reference, reference_count=reference_count,
+            reference_context=reference_context,
+        )
 
     # ── Wireframe instruction (always present when a wireframe is supplied) ───
     wireframe_block = ""
@@ -255,6 +278,244 @@ Before rendering any pixel, re-examine IMAGE 1 (the wireframe). Every colour, st
     return "\n\n".join(parts)
 
 
+# ─── Helmet prompt builder ────────────────────────────────────────────────────
+
+def _build_helmet_prompt(
+    user_prompt: str,
+    has_wireframe: bool = True,
+    has_base: bool = False,
+    has_reference: bool = False,
+    reference_count: int = 0,
+    reference_context: str = "",
+) -> str:
+    """Build the full system + task prompt for helmet texture generation."""
+
+    wireframe_block = ""
+    if has_wireframe:
+        wireframe_block = """
+IMAGE 1 — UV WIREFRAME (structural guide, must be invisible in output):
+The first image is the helmet's UV layout wireframe. It shows the exact mapping of every surface region in UV-texture space — front visor surround, top crown, left/right sides, chin bar, rear spoiler/vent area, and visor opening.
+
+YOUR SINGLE MOST IMPORTANT INSTRUCTION:
+Map every element of your helmet design — colours, graphics, stripes, logos — directly onto the surface positions shown in this wireframe. The wireframe IS the coordinate system for your output. Treat it like an architectural plan: every design decision is made relative to what you see in it.
+
+WHAT TO DO WITH THE WIREFRAME:
+- Study each region's exact position, size, shape, and orientation in UV space.
+- Place graphics, stripes, colour transitions, and sponsor logos so they land on the correct regions as defined by the wireframe boundaries.
+- Respect seams — design elements that span the crown-to-side or chin-to-cheek boundaries must account for seam positions.
+- The UV map may contain mirrored or flipped regions for both sides of the helmet; respect the actual layout shown.
+
+WHAT NOT TO DO WITH THE WIREFRAME:
+- Do NOT reproduce the wireframe lines, grid, overlay, or any part of its visual appearance in your output texture.
+- Do NOT include visible seam lines, edge markers, UV guides, or structural overlays in the result.
+- The wireframe lines must be 100% invisible in the final texture.
+""".strip()
+
+    reference_block = ""
+    if has_reference:
+        ref_ctx = f"\nUSER'S REFERENCE CONTEXT: {reference_context}" if reference_context else ""
+        if reference_count > 1:
+            reference_block = f"""
+REFERENCE IMAGES ({reference_count} provided):
+Multiple reference images have been supplied. Use them collectively as visual inspiration.
+- The references are guides, NOT templates — do not replicate them pixel-for-pixel.
+- Draw stylistic cues, colour palette ideas, or layout patterns from them.
+- Prioritise the user's written prompt over the references when they conflict.{ref_ctx}
+""".strip()
+        else:
+            reference_block = f"""
+REFERENCE IMAGE (provided):
+A reference image has been supplied. Use it as visual inspiration.
+- The reference is a guide, NOT a template — do not replicate it pixel-for-pixel.
+- Draw stylistic cues, colour palette ideas, or layout patterns from it.
+- Prioritise the user's written prompt over the reference when they conflict.{ref_ctx}
+""".strip()
+
+    if has_base:
+        task_block = """
+TASK — DESIGN RACING HELMET (with base reference):
+The second image is a reference helmet texture or colour scheme.
+- Use it as a loose creative reference for colour palette, team branding, or overall style direction.
+- You are NOT required to replicate it exactly — design a fresh, complete helmet that is inspired by it.
+""".strip()
+    else:
+        task_block = """
+TASK — DESIGN COMPLETELY NEW RACING HELMET:
+No reference texture has been provided.
+- Design an entirely original, professional motorsport helmet from scratch.
+- Express creative confidence — choose a strong, coherent colour palette and visual identity.
+- The result should look like a real helmet you might see on a professional racing driver.
+""".strip()
+
+    technical_block = """
+TECHNICAL REQUIREMENTS (non-negotiable):
+- Output format: flat UV texture map, exactly 2048 × 2048 pixels, square (1:1 aspect ratio)
+- Do NOT render any 3D shading, ambient occlusion, specular highlights, reflections, or lighting bakes — the texture must be completely flat / unlit
+- The visor area must be solid black (#000000) or very dark tinted
+- No drop shadows on graphics — flat vector-quality edges only
+- All sponsor text, driver names, and logos must be correctly oriented and legible
+- Colour values must be clean, saturated, and consistent — avoid muddy or desaturated hues
+- Do NOT include any background, studio floor, 3D helmet model, mockup frame, or scene context — output the raw texture map ONLY
+
+VISOR GRAPHICS HANDLING (top-right area):
+- The visor region appears in the top-right of the UV layout and represents the front face opening of the helmet.
+- If the user's prompt mentions graphics, colours, or styling that should appear "on the visor" or "on the face," interpret this as VISOR TINTING or VISOR FINISH — not as paint applied to other helmet surfaces.
+- Visor styling options:
+  * Solid dark tint (default racing visor — dark grey or charcoal)
+  * Tinted with metallic sheen (silver, gold, or iridescent effect)
+  * Gradient tint (darker at top, lighter at bottom for visibility)
+  * Reflective visor pattern (if user requests it)
+- Do NOT apply general helmet paint graphics (stripes, logos, sponsor text) to the visor region itself.
+- If user wants sponsor logos "on the visor," place them on other helmet surfaces (crown, chin bar, sides) instead — the visor stays as a functional tinted surface.
+
+STRUCTURAL GUIDANCE (critical):
+- Only augment the BLUE REGIONS of the base texture and the visor.
+- Be aware of how the main texture of the helmet folds down onto the region of the forehead.
+- Respect the base texture's structural folds and contours — your augmentations should follow and enhance these natural helmet surfaces, not fight against them.
+
+HELMET DESIGN GUIDELINES:
+- Think like a professional motorsport helmet painter — bold, confident, eye-catching
+- Common design elements: sweeping stripes, teardrop shapes, flame patterns, geometric graphics, national flags, driver number
+- The crown (top) is the signature area — make it visually distinctive
+- Side panels should complement the crown design with coherent flow
+- Chin bar area can carry sponsor logos or accent graphics
+- Consider how the design flows across seams (crown→side, side→chin)
+- Real helmets are glossy — design for a surface that will be shiny (bright, saturated colours work best)
+""".strip()
+
+    wireframe_closing = ""
+    if has_wireframe:
+        wireframe_closing = """
+FINAL REMINDER — UV STRUCTURE IS MANDATORY:
+Before rendering any pixel, re-examine IMAGE 1 (the wireframe). Every colour, stripe, graphic, and logo in your output must be positioned relative to the surface regions visible in that wireframe. The wireframe lines themselves must be invisible, but the structure they define must govern every placement decision you make.""".strip()
+
+    parts = ["You are a professional motorsport helmet designer generating a UV texture for iRacing simulation software.\n"]
+    if wireframe_block:
+        parts.append(wireframe_block)
+    if reference_block:
+        parts.append(reference_block)
+    parts.append(task_block)
+    parts.append(technical_block)
+    parts.append(f"HELMET DESIGN BRIEF:\n{user_prompt}")
+    if wireframe_closing:
+        parts.append(wireframe_closing)
+
+    return "\n\n".join(parts)
+
+
+# ─── Suit prompt builder ─────────────────────────────────────────────────────
+
+def _build_suit_prompt(
+    user_prompt: str,
+    has_wireframe: bool = True,
+    has_base: bool = False,
+    has_reference: bool = False,
+    reference_count: int = 0,
+    reference_context: str = "",
+) -> str:
+    """Build the full system + task prompt for racing suit texture generation."""
+
+    wireframe_block = ""
+    if has_wireframe:
+        wireframe_block = """
+IMAGE 1 — UV WIREFRAME (structural guide, must be invisible in output):
+The first image is the racing suit's UV layout wireframe. It shows the exact mapping of every surface region in UV-texture space — torso front/back, left/right arms, left/right legs, collar, gloves, and boots/shoes.
+
+YOUR SINGLE MOST IMPORTANT INSTRUCTION:
+Map every element of your suit design — colours, graphics, stripes, sponsor logos — directly onto the surface positions shown in this wireframe. The wireframe IS the coordinate system for your output. Treat it like a sewing pattern: every design decision is made relative to what you see in it.
+
+WHAT TO DO WITH THE WIREFRAME:
+- Study each body region's exact position, size, shape, and orientation in UV space.
+- Place graphics, stripes, colour transitions, and sponsor logos so they land on the correct body regions as defined by the wireframe boundaries.
+- Respect seams — design elements that span the torso-to-arm or hip-to-leg boundaries must account for seam positions.
+- Identify the chest, back, shoulders, upper/lower arms, thighs, calves, and boots/shoes by their positions in the wireframe.
+- The UV map may contain mirrored or flipped regions; respect the actual layout shown.
+
+WHAT NOT TO DO WITH THE WIREFRAME:
+- Do NOT reproduce the wireframe lines, grid, overlay, or any part of its visual appearance in your output texture.
+- Do NOT include visible seam lines, edge markers, UV guides, or structural overlays in the result.
+- The wireframe lines must be 100% invisible in the final texture.
+""".strip()
+
+    reference_block = ""
+    if has_reference:
+        ref_ctx = f"\nUSER'S REFERENCE CONTEXT: {reference_context}" if reference_context else ""
+        if reference_count > 1:
+            reference_block = f"""
+REFERENCE IMAGES ({reference_count} provided):
+Multiple reference images have been supplied. Use them collectively as visual inspiration.
+- The references are guides, NOT templates — do not replicate them pixel-for-pixel.
+- Draw stylistic cues, colour palette ideas, or layout patterns from them.
+- Prioritise the user's written prompt over the references when they conflict.{ref_ctx}
+""".strip()
+        else:
+            reference_block = f"""
+REFERENCE IMAGE (provided):
+A reference image has been supplied. Use it as visual inspiration.
+- The reference is a guide, NOT a template — do not replicate it pixel-for-pixel.
+- Draw stylistic cues, colour palette ideas, or layout patterns from it.
+- Prioritise the user's written prompt over the reference when they conflict.{ref_ctx}
+""".strip()
+
+    if has_base:
+        task_block = """
+TASK — DESIGN RACING SUIT (with base reference):
+The second image is a reference suit texture or colour scheme.
+- Use it as a loose creative reference for colour palette, team branding, or overall style direction.
+- You are NOT required to replicate it exactly — design a fresh, complete racing suit that is inspired by it.
+""".strip()
+    else:
+        task_block = """
+TASK — DESIGN COMPLETELY NEW RACING SUIT:
+No reference texture has been provided.
+- Design an entirely original, professional motorsport racing suit from scratch.
+- Express creative confidence — choose a strong, coherent colour palette and visual identity.
+- The result should look like a real race suit you might see on a professional racing driver on the grid.
+""".strip()
+
+    technical_block = """
+TECHNICAL REQUIREMENTS (non-negotiable):
+- Output format: flat UV texture map, exactly 2048 × 2048 pixels, square (1:1 aspect ratio)
+- Do NOT render any 3D shading, ambient occlusion, specular highlights, reflections, or lighting bakes — the texture must be completely flat / unlit
+- No drop shadows on graphics — flat vector-quality edges only
+- All sponsor text, driver names, and logos must be correctly oriented and legible
+- Colour values must be clean, saturated, and consistent — avoid muddy or desaturated hues
+- Do NOT include any background, studio floor, 3D mannequin/model, mockup frame, or scene context — output the raw texture map ONLY
+
+RACING SUIT DESIGN GUIDELINES:
+- Think like a professional motorsport suit designer — the suit represents the team and driver's identity
+- The suit includes: race suit body (torso, arms, legs), gloves, and racing boots/shoes
+- Common design elements: team colours, bold colour blocking, racing stripes, sponsor logo placements, driver name and number
+- Chest and back panels are prime sponsor real estate — large, prominent logos
+- Arms and legs carry secondary sponsors and accent stripes
+- Collar area often has team branding or small flag
+- Boots/shoes should coordinate with the overall colour scheme — often matching the primary team colours with contrasting soles and accent details
+- Gloves should complement the suit with matching team colours or accent highlights
+- Consider how the design flows naturally across body regions — torso to arms, hips to legs
+- Real racing suits use Nomex fire-resistant fabric — design for a slightly matte textile surface (clean, solid colours work best)
+- Match the suit to a coherent team identity — the same branding language should appear on the suit as would on the car and helmet
+""".strip()
+
+    wireframe_closing = ""
+    if has_wireframe:
+        wireframe_closing = """
+FINAL REMINDER — UV STRUCTURE IS MANDATORY:
+Before rendering any pixel, re-examine IMAGE 1 (the wireframe). Every colour, stripe, graphic, and logo in your output must be positioned relative to the body regions visible in that wireframe. The wireframe lines themselves must be invisible, but the structure they define must govern every placement decision you make.""".strip()
+
+    parts = ["You are a professional motorsport racing suit designer generating a UV texture for iRacing simulation software.\n"]
+    if wireframe_block:
+        parts.append(wireframe_block)
+    if reference_block:
+        parts.append(reference_block)
+    parts.append(task_block)
+    parts.append(technical_block)
+    parts.append(f"RACING SUIT DESIGN BRIEF:\n{user_prompt}")
+    if wireframe_closing:
+        parts.append(wireframe_closing)
+
+    return "\n\n".join(parts)
+
+
 def generate_livery(
     prompt: str,
     wireframe_path: str,
@@ -285,14 +546,14 @@ def generate_livery(
     if reference_path and reference_path not in reference_paths:
         reference_paths.insert(0, reference_path)
 
-    # Build image parts
-    print(f"[generate_livery] Loading wireframe from {wireframe_path}")
-    wireframe_bytes = load_image_as_bytes(wireframe_path)
-    wireframe_mime  = get_image_mime_type(wireframe_path)
+    contents: list = []
 
-    contents: list = [
-        types.Part.from_bytes(data=wireframe_bytes, mime_type=wireframe_mime),
-    ]
+    # Wireframe — not included in raw mode
+    if wireframe_path and mode != "raw":
+        print(f"[generate_livery] Loading wireframe from {wireframe_path}")
+        wireframe_bytes = load_image_as_bytes(wireframe_path)
+        wireframe_mime  = get_image_mime_type(wireframe_path)
+        contents.append(types.Part.from_bytes(data=wireframe_bytes, mime_type=wireframe_mime))
 
     if base_path:
         print(f"[generate_livery] Loading base texture from {base_path}")
@@ -300,7 +561,7 @@ def generate_livery(
         base_mime  = get_image_mime_type(base_path)
         contents.append(types.Part.from_bytes(data=base_bytes, mime_type=base_mime))
 
-    # Load all reference images
+    # Reference images — included in all modes including raw
     for ref_p in reference_paths:
         print(f"[generate_livery] Loading reference image from {ref_p}")
         ref_bytes = load_image_as_bytes(ref_p)
@@ -399,9 +660,12 @@ def generate_livery(
 
     print(f"[generate_livery] Raw image size from model: {generated_image.size}")
 
-    # Upscale with Real-ESRGAN, or fall back to simple Lanczos resize
+    # Raw mode: preserve the original aspect ratio — no forced resize
+    # (raw mode is for freeform generation, not iRacing UV textures)
     upscale_succeeded = False
-    if upscale:
+    if mode == "raw":
+        print(f"[generate_livery] Raw mode — keeping original size {generated_image.size}")
+    elif upscale:
         try:
             from server.upscale import upscale_to_2048, is_available
             if is_available():

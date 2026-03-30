@@ -11,6 +11,7 @@ export default defineConfig({
   build: {
     outDir: '../static',
     emptyOutDir: true,
+    minify: process.env.BUILD_FOR_EXE === 'true' ? 'terser' : false,
   },
   test: {
     globals: true,

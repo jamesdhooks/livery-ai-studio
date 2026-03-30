@@ -3,7 +3,7 @@ server/cars.py
 --------------
 Car library scanning, caching, and lookup.
 
-Merges the repo-baseline car_library/ with user-override data/cars/.
+Merges the repo-baseline library/ with user-override data/cars/.
 User entries win on folder-name collision.
 """
 
@@ -93,7 +93,7 @@ _cars_cache: dict[str, dict] | None = None
 
 def load_all_cars(force: bool = False) -> list[dict]:
     """
-    Return the merged car list (car_library/ + data/cars/).
+    Return the merged car list (library/ + data/cars/).
     Results are cached; pass force=True to re-scan.
     """
     global _cars_cache

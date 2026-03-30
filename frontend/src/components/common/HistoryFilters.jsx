@@ -32,6 +32,8 @@ export function HistoryFilters({
     if (!item.resolution_2k) availableBadges.add('1k');
     if (item.mode === 'modify') availableBadges.add('modify');
     if (item.mode === 'iterate') availableBadges.add('iterate');
+    if (item.mode === 'helmet') availableBadges.add('helmet');
+    if (item.mode === 'suit') availableBadges.add('suit');
     if (item.upscaled) availableBadges.add('upscaled');
     if (item.resampled) availableBadges.add('resampled');
   });
@@ -47,6 +49,8 @@ export function HistoryFilters({
     { id: '1k', label: '1K', color: 'bg-text-muted/50' },
     { id: 'modify', label: 'Modify', color: 'bg-warning/70' },
     { id: 'iterate', label: 'Iterate', color: 'bg-warning/50' },
+    { id: 'helmet', label: 'Helmet', color: 'bg-purple-600/70' },
+    { id: 'suit', label: 'Suit', color: 'bg-purple-700/70' },
     { id: 'upscaled', label: 'Upscaled', color: 'bg-accent-wine/70' },
     { id: 'resampled', label: 'Resampled', color: 'bg-accent/70' },
   ].filter(b => availableBadges.has(b.id));

@@ -19,7 +19,7 @@ setlocal EnableDelayedExpansion
 ::
 :: Output:
 ::   dist\Livery-AI-Studio-v<VERSION>::       Livery-AI-Studio.exe
-::       static::       car_library::       livery_map.json
+::       static::       library::       livery_map.json
 ::       ...
 ::
 :: After the build, zip the output folder and attach it to the GitHub release.
@@ -92,12 +92,12 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo  Building React frontend...
+echo  Building React frontend (minified for exe)...
 pushd "%APP_DIR%frontend"
 call npm ci
 if %errorlevel% neq 0 ( echo  [ERROR] npm ci failed & popd & pause & exit /b 1 )
-call npm run build
-if %errorlevel% neq 0 ( echo  [ERROR] npm run build failed & popd & pause & exit /b 1 )
+call npm run build:exe
+if %errorlevel% neq 0 ( echo  [ERROR] npm run build:exe failed & popd & pause & exit /b 1 )
 popd
 echo  [OK] Frontend built
 

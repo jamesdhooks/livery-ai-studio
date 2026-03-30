@@ -244,7 +244,7 @@ livery-ai-studio/
 │       ├── services/       # API service layer
 │       └── test/           # Vitest + React Testing Library
 ├── static/                 # Built React app (served by Flask — do not edit)
-├── car_library/            # Pre-extracted car templates (read-only)
+├── library/                # Pre-extracted car templates (read-only)
 ├── config.json             # Local settings (auto-created, git-ignored)
 └── start.bat / start.sh    # Launch scripts
 ```

@@ -24,22 +24,33 @@ from flask import Blueprint, jsonify, request
 
 from server.config import get_data_dir, get_liveries_dir, get_thumbnails_dir, get_user_cars_dir, load_config, save_config
 from server.cars import lookup_car_display
-from server.extract import LIBRARY_DIR
+from server.extract import LIBRARY_DIR, LIBRARY_ROOT
 import server.spending as spending_log
 
 bp = Blueprint("api_generate", __name__)
+
+# Modes that use their own fixed wireframe/diffuse from /library/<mode>/
+GEAR_MODES = {"helmet", "suit"}
 
 
 # ── Path resolution helpers ───────────────────────────────────────────────────
 
 _LIBRARY_URL_RE = re.compile(r"^/api/library/image/([a-z0-9_-]+)/(wire\.jpg|diffuse\.jpg)$")
+_GEAR_URL_RE    = re.compile(r"^/api/library/(helmet|suit)/(wire\.jpg|diffuse\.jpg)$")
 
 
 def _resolve_image_path(path_or_url: str) -> str:
-    """Resolve a library image URL (e.g. /api/library/image/slug/wire.jpg)
-    to an absolute filesystem path.  Non-URL paths are returned unchanged."""
+    """Resolve a library image URL (e.g. /api/library/image/slug/wire.jpg
+    or /api/library/helmet/wire.jpg) to an absolute filesystem path.
+    Non-URL paths are returned unchanged."""
     if not path_or_url:
         return path_or_url
+    # Helmet / suit library assets
+    gm = _GEAR_URL_RE.match(path_or_url)
+    if gm:
+        gear_type, filename = gm.group(1), gm.group(2)
+        return str(LIBRARY_ROOT / gear_type / filename)
+    # Car library assets
     m = _LIBRARY_URL_RE.match(path_or_url)
     if not m:
         return path_or_url
@@ -73,7 +84,7 @@ def _record_recent_car(folder: str, config: dict | None = None) -> None:
 def api_generate():
     """Generate a livery image via Gemini and optionally deploy to iRacing."""
     from server.generate import generate_livery, MODEL_PRO, MODEL_FAST
-    from server.deploy import deploy_livery, resolve_car_folder
+    from server.deploy import deploy_livery, deploy_gear, resolve_car_folder
     from PIL import Image
 
     data   = request.json or {}
@@ -101,33 +112,47 @@ def api_generate():
     customer_id         = data.get("customer_id",      config.get("customer_id", "")).strip()
     auto_deploy         = data.get("auto_deploy", True)
     mode                = data.get("mode", "new")
-    upscale             = data.get("upscale_result", False)
+    upscale             = data.get("upscale_result", False) and mode not in ("raw", *GEAR_MODES)
+    is_gear             = mode in GEAR_MODES  # helmet / suit
+
+    # Helmet / suit: auto-resolve wire + diffuse from /library/<mode>/
+    if is_gear:
+        gear_wire = LIBRARY_ROOT / mode / "wire.jpg"
+        gear_diff = LIBRARY_ROOT / mode / "diffuse.jpg"
+        wireframe_path    = str(gear_wire) if gear_wire.exists() else ""
+        if not base_texture_path:
+            base_texture_path = str(gear_diff) if gear_diff.exists() else ""
+        # Gear items auto-deploy to paint root (if customer_id is set)
+        # Don't auto-deploy if customer_id is missing
+        if not customer_id:
+            auto_deploy = False
 
     api_key = config.get("gemini_api_key", "") or os.environ.get("GEMINI_API_KEY", "")
 
     print(f"[GENERATE] prompt={prompt[:50]}")
     print(f"[GENERATE] wireframe_path={wireframe_path}")
     print(f"[GENERATE] base_texture_path={base_texture_path}")
-    print(f"[GENERATE] car_name={car_name}, auto_deploy={auto_deploy}")
+    print(f"[GENERATE] mode={mode}, car_name={car_name}, auto_deploy={auto_deploy}")
 
     # Validation
     if not prompt:
         return jsonify({"error": "Please enter a livery description."}), 400
-    if not wireframe_path:
+    if mode not in ("raw", *GEAR_MODES) and not wireframe_path:
         return jsonify({"error": "Please select a wireframe image."}), 400
-    if not Path(wireframe_path).exists():
+    if mode not in ("raw", *GEAR_MODES) and wireframe_path and not Path(wireframe_path).exists():
         return jsonify({"error": f"Wireframe not found: {wireframe_path}"}), 400
+    if is_gear and wireframe_path and not Path(wireframe_path).exists():
+        return jsonify({"error": f"{mode.title()} wireframe not found — check /library/{mode}/wire.jpg"}), 400
     if not api_key:
         return jsonify({"error": "No Gemini API key set. Go to Settings to add one."}), 400
-    if auto_deploy and not car_name:
+    if auto_deploy and not is_gear and not car_name:
         return jsonify({"error": "Please select a car for deployment."}), 400
-    # If auto_deploy requested but no customer_id, silently downgrade to no-deploy
     if auto_deploy and not customer_id:
         auto_deploy = False
 
     try:
         model       = MODEL_FAST if use_fast else MODEL_PRO
-        car_display = lookup_car_display(car_name)
+        car_display = mode.title() if is_gear else lookup_car_display(car_name)
         print(f"[GENERATE] Using model: {model} (use_fast={use_fast}, model_param={model_param})")
         liveries_dir = get_liveries_dir()
         liveries_dir.mkdir(parents=True, exist_ok=True)
@@ -138,7 +163,7 @@ def api_generate():
 
         result = generate_livery(
             prompt=prompt,
-            wireframe_path=wireframe_path,
+            wireframe_path=wireframe_path if mode not in ("raw",) else "",
             output_path=tmp_path,
             base_path=base_texture_path or None,
             reference_paths=reference_image_paths or None,
@@ -219,8 +244,8 @@ def api_generate():
             "base_texture_path":    base_texture_path or "",
             "reference_image_paths": reference_image_paths or [],
             "reference_context":    reference_context or "",
-            "car":                  car_display or car_name,
-            "car_folder":           car_name,
+            "car":                  car_display if not is_gear else "",
+            "car_folder":           car_name if not is_gear else "",
             "customer_id":          customer_id,
             "auto_deploy":          auto_deploy,
             "upscaled":             upscale_succeeded,
@@ -240,7 +265,7 @@ def api_generate():
             model=model_name,
             resolution=resolution_str,
             status="success",
-            car=car_display or car_name,
+            car=mode.title() if is_gear else (car_display or car_name),
             livery_id=livery_path.stem,
             estimated=False,
         )
@@ -279,13 +304,18 @@ def api_generate():
                 print(f"[GENERATE] No matching source livery found for base_texture_path={base_texture_path!r}")
 
         # ── Deploy ────────────────────────────────────────────────────────────
-        if auto_deploy and car_name and customer_id:
-            dest = deploy_livery(tga_path=result_path, car_name=car_name,
-                                  customer_id=customer_id)
-            response["deployed_to"] = str(dest)
-            response["car_folder"]  = resolve_car_folder(car_name)
-
-        if car_name:
+        if auto_deploy and customer_id:
+            if is_gear:
+                dest = deploy_gear(tga_path=result_path, gear_type=mode,
+                                    customer_id=customer_id)
+                response["deployed_to"] = str(dest)
+            elif car_name:
+                dest = deploy_livery(tga_path=result_path, car_name=car_name,
+                                      customer_id=customer_id)
+                response["deployed_to"] = str(dest)
+                response["car_folder"]  = resolve_car_folder(car_name)
+                _record_recent_car(car_name, config)
+        elif not is_gear and car_name:
             _record_recent_car(car_name, config)
 
         # ── Preview PNG ───────────────────────────────────────────────────────
@@ -300,6 +330,7 @@ def api_generate():
         # ── Enrich response with sidecar fields for the frontend detail panel ──
         response["prompt"]            = prompt
         response["context"]           = reference_context or ""
+        response["mode"]              = mode
         response["cost"]              = estimated_cost
         response["car"]               = car_display or car_name
         response["model_name"]        = model_name
@@ -374,7 +405,6 @@ DEFAULT_ENHANCE_GUIDANCE = """- Add specific colour references (e.g. "deep metal
 - Describe surface finishes (matte, satin, gloss, metallic, carbon fibre pattern)
 - Include realistic racing design conventions (contrasting number backgrounds, panel-aligned colour breaks)
 - Keep the user's original creative intent — enhance and flesh out, don't contradict
-- Output ONLY the enhanced prompt text, no explanations or preamble
 - Keep it concise but detailed — aim for 3-6 sentences"""
 
 
@@ -431,17 +461,19 @@ def enhance_prompt():
 
         system_prompt = f"""You are a professional racing livery design consultant. {mode_context}
 
-Your job is to take a user's brief livery description and enhance it into a detailed, specific prompt that will produce better AI-generated racing livery textures.
+Your job is to rewrite a user's brief livery description into a detailed, specific prompt that will produce better AI-generated racing livery textures.
 
-Guidelines for enhancement:
+CRITICAL: Your response must contain ONLY the enhanced prompt text — no preamble, no explanation, no headings, no bullet points, no commentary, no "Here is your enhanced prompt:" or similar. Just the raw prompt text itself.
+
+Guidelines for the enhanced prompt:
 {guidelines}"""
 
         if context:
-            system_prompt += f"\n\nThe user has also provided this context: {context}"
+            system_prompt += f"\n\nAdditional context provided by the user: {context}"
 
         response = client.models.generate_content(
             model="gemini-3.1-flash-lite-preview",
-            contents=f"Enhance this racing livery prompt:\n\n{prompt}",
+            contents=prompt,
             config=genai.types.GenerateContentConfig(
                 system_instruction=system_prompt,
                 temperature=0.7,

@@ -16,7 +16,7 @@ Output:
     └── Livery-AI-Studio-v<VERSION>/
         ├── Livery-AI-Studio.exe
         ├── static/          (React frontend)
-        ├── car_library/     (180+ car templates)
+        ├── library/     (180+ car templates)
         ├── livery_map.json
         └── ... (Python runtime DLLs, .pyd files, etc.)
 
@@ -48,7 +48,7 @@ a = Analysis(
         # React frontend (built output — run `npm run build` first)
         ("static", "static"),
         # Car template library (180+ pre-extracted templates)
-        ("car_library", "car_library"),
+        ("library", "library"),
         # Car-to-folder mapping used by deploy_livery.py
         ("livery_map.json", "."),
         # App icons

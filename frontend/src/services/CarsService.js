@@ -4,7 +4,7 @@ import { BaseService } from './BaseService';
  * CarsService — provides the list of available iRacing car templates and
  * utility methods for building car image URLs.
  *
- * Car data is sourced from the server-side `car_library/` directory (pre-extracted
+ * Car data is sourced from the server-side `library/` directory (pre-extracted
  * PSD templates).  User-defined overrides live in `data/cars/`.
  */
 class CarsService extends BaseService {

@@ -63,6 +63,22 @@ class UpscaleService extends BaseService {
   }
 
   /**
+   * Deploy a helmet or suit TGA to the iRacing paint root folder.
+   * Saves as helmet_<customerId>.tga or suit_<customerId>.tga.
+   * @param {string} liveryPath  - Server-side path to the TGA.
+   * @param {'helmet'|'suit'} gearType  - Gear type.
+   * @param {string} customerId - iRacing customer ID.
+   * @returns {Promise<{ok: boolean}>}
+   */
+  async deployGear(liveryPath, gearType, customerId) {
+    return this.post('/deploy-gear', {
+      path: liveryPath,
+      gear_type: gearType,
+      customer_id: customerId,
+    });
+  }
+
+  /**
    * Deploy the car's factory default diffuse texture to iRacing.
    * @param {string} carFolder - iRacing car folder name.
    * @returns {Promise<{ok: boolean}>}
@@ -83,12 +99,47 @@ class UpscaleService extends BaseService {
 
   /**
    * Open the native Save-As dialog to download a source file (e.g. TGA).
+   * In native mode: shows save dialog.
+   * In browser mode: triggers browser download.
    * @param {string} sourcePath - Absolute server-side path to copy from.
    * @param {string} [filename]  - Suggested filename in the dialog.
-   * @returns {Promise<{path: string|null}>}
+   * @returns {Promise<void>}
    */
   async downloadFile(sourcePath, filename) {
-    return this.post('/download-file', { path: sourcePath, filename: filename || '' });
+    const url = `${this.basePath}/download-file`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: sourcePath, filename: filename || '' }),
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorData.message || errorMessage;
+      } catch {
+        // ignore JSON parse error
+      }
+      throw new Error(errorMessage);
+    }
+
+    // If response is JSON (native dialog succeeded), just return
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      return response.json();
+    }
+
+    // Otherwise, it's a file download (browser mode) — trigger via blob
+    const blob = await response.blob();
+    const fileUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = fileUrl;
+    a.download = filename || 'download';
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(fileUrl);
+    document.body.removeChild(a);
   }
 
   /**

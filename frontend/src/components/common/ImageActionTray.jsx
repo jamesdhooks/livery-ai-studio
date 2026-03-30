@@ -26,29 +26,47 @@ export function ImageActionTray({
 }) {
   const handleCopy = async () => {
     if (!imageUrl) return;
+    
     try {
-      const res = await fetch(imageUrl);
-      const blob = await res.blob();
-      await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
-      onNotify?.('Image copied to clipboard', 'success');
-    } catch {
-      // Fallback — copy URL text
-      try { 
+      // Try to fetch and copy the blob (full image copy)
+      try {
+        const res = await fetch(imageUrl);
+        const blob = await res.blob();
+        
+        // Try clipboard API if available
+        if (navigator.clipboard?.write) {
+          await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+          onNotify?.('Image copied to clipboard', 'success');
+          return;
+        }
+      } catch (e) {
+        console.warn('Image blob copy failed:', e);
+      }
+      
+      // Fallback: try clipboard writeText with URL
+      if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(imageUrl);
         onNotify?.('Image link copied to clipboard', 'success');
-      } catch { 
-        onNotify?.('Failed to copy image', 'error');
+        return;
       }
+      
+      // Last resort: no clipboard API available
+      onNotify?.('Clipboard not available in this context', 'warning');
+    } catch (e) {
+      console.error('Copy failed:', e);
+      onNotify?.('Failed to copy image', 'error');
     }
   };
 
-  const handleDownload = () => {
-    if (!imageUrl) return;
-    const a = document.createElement('a');
-    a.href = imageUrl;
-    a.download = downloadName;
-    a.click();
-    onNotify?.('Download started', 'success');
+  const handleDownload = async () => {
+    if (!imagePath) return;
+    try {
+      await upscaleService.downloadFile(imagePath, downloadName.replace(/\.png$/i, '.tga'));
+      onNotify?.('Download started', 'success');
+    } catch (e) {
+      console.error('Download failed:', e);
+      onNotify?.('Download failed', 'error');
+    }
   };
 
   const handleOpenExplorer = async () => {

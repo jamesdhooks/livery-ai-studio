@@ -33,6 +33,7 @@ import upscaleService from '../../services/UpscaleService';
  * @param {Function} [props.onUpscale]    - "Upscale" handler (load into Upscale tab, Upscale mode)
  * @param {Function} [props.onDelete]      - Delete handler (omit to hide button)
  * @param {boolean}  [props.generating]    - Show generating overlay on image
+ * @param {string}   [props.mode]          - Generation mode: 'new' | 'modify' | 'iterate' | 'raw'
  * @param {string}   [props.beforeUrl]      - URL of the "before" image for wipe comparison
  * @param {boolean}  [props.compareEnabled]  - Whether the before/after wipe is active
  * @param {Function} [props.onToggleCompare] - Toggle compare mode callback
@@ -61,6 +62,7 @@ export function LiveryDetailPanel({
   onUpscale,
   onDelete,
   generating = false,
+  mode,
   compareEnabled = false,
   onToggleCompare,
   compareSource = 'source',
@@ -119,18 +121,35 @@ export function LiveryDetailPanel({
 
   const handleCopy = async () => {
     if (!imageUrl) return;
+    
     try {
-      const res = await fetch(imageUrl);
-      const blob = await res.blob();
-      await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
-      onNotify?.('Image copied to clipboard', 'success');
-    } catch (e) {
-      try { 
+      // Try to fetch and copy the blob (full image copy)
+      try {
+        const res = await fetch(imageUrl);
+        const blob = await res.blob();
+        
+        // Try clipboard API if available
+        if (navigator.clipboard?.write) {
+          await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+          onNotify?.('Image copied to clipboard', 'success');
+          return;
+        }
+      } catch (e) {
+        console.warn('Image blob copy failed:', e);
+      }
+      
+      // Fallback: try clipboard writeText with URL
+      if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(imageUrl);
         onNotify?.('Image link copied to clipboard', 'success');
-      } catch { 
-        onNotify?.('Failed to copy image', 'error');
+        return;
       }
+      
+      // Last resort: no clipboard API available
+      onNotify?.('Clipboard not available in this context', 'warning');
+    } catch (e) {
+      console.error('Copy failed:', e);
+      onNotify?.('Failed to copy image', 'error');
     }
   };
 
@@ -139,8 +158,9 @@ export function LiveryDetailPanel({
     try {
       await upscaleService.downloadFile(imagePath, downloadName.replace(/\.png$/i, '.tga'));
       onNotify?.('Download started', 'success');
-    } catch { 
-      onNotify?.('Download cancelled or failed', 'warning');
+    } catch (e) {
+      console.error('Download failed:', e);
+      onNotify?.('Download failed', 'error');
     }
   };
 
@@ -375,7 +395,7 @@ export function LiveryDetailPanel({
               <div className="bg-bg-panel/95 border border-border-default rounded-2xl px-10 py-7 flex flex-col items-center gap-4 shadow-2xl">
                 <div className="w-12 h-12 border-[3px] border-accent border-t-transparent rounded-full animate-spin" />
                 <div className="flex flex-col items-center gap-1">
-                  <span className="text-base font-semibold text-text-primary">Generating livery…</span>
+                  <span className="text-base font-semibold text-text-primary">{mode === 'raw' ? 'Generating Image…' : 'Generating livery…'}</span>
                   <span className="text-[12px] text-text-muted">This takes 15–30 seconds</span>
                 </div>
               </div>

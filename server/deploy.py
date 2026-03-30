@@ -85,6 +85,53 @@ def build_spec_target_filename(customer_id: str | int) -> str:
     return f"car_spec_{customer_id}.tga"
 
 
+def build_gear_target_filename(gear_type: str, customer_id: str | int) -> str:
+    """Return the iRacing gear filename, e.g. helmet_123456.tga or suit_123456.tga."""
+    return f"{gear_type}_{customer_id}.tga"
+
+
+def deploy_gear(
+    tga_path: str,
+    gear_type: str,
+    customer_id: str | int,
+    dry_run: bool = False,
+) -> Path:
+    """
+    Copy tga_path into the iRacing paint ROOT folder (not a car subfolder).
+    iRacing reads helmet_<id>.tga and suit_<id>.tga directly from:
+        Documents\\iRacing\\paint\\
+    Returns the destination path.
+    """
+    if gear_type not in ("helmet", "suit"):
+        raise ValueError(f"Unknown gear type: {gear_type!r} — must be 'helmet' or 'suit'")
+
+    tga_src = Path(tga_path)
+    if not tga_src.exists():
+        raise FileNotFoundError(f"Source TGA not found: {tga_src}")
+
+    docs      = get_documents_folder()
+    paint_dir = docs / "iRacing" / "paint"
+    dest      = paint_dir / build_gear_target_filename(gear_type, customer_id)
+
+    print(f"[deploy_gear] Source : {tga_src}")
+    print(f"[deploy_gear] Target : {dest}")
+
+    if dry_run:
+        print("[deploy_gear] DRY RUN — no files written.")
+        return dest
+
+    paint_dir.mkdir(parents=True, exist_ok=True)
+
+    if dest.exists():
+        backup = dest.with_suffix(".tga.bak")
+        print(f"[deploy_gear] Backing up existing → {backup}")
+        shutil.copy2(dest, backup)
+
+    shutil.copy2(tga_src, dest)
+    print(f"[deploy_gear] ✓ Deployed to {dest}")
+    return dest
+
+
 def deploy_livery(
     tga_path: str,
     car_name: str,

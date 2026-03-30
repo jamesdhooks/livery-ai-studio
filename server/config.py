@@ -13,7 +13,7 @@ from pathlib import Path
 # ── Paths ─────────────────────────────────────────────────────────────────────
 # PyInstaller 6+ (onedir) layout:
 #   APP_DIR    = directory containing the .exe  (user-writable: config, data, logs)
-#   BUNDLE_DIR = _internal/ sub-folder          (read-only bundled data: static, car_library, icons)
+#   BUNDLE_DIR = _internal/ sub-folder          (read-only bundled data: static, library, icons)
 # When running from source both point to the repo root.
 if getattr(sys, "frozen", False):
     APP_DIR: Path    = Path(sys.executable).parent          # next to .exe

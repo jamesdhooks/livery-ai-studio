@@ -245,7 +245,11 @@ def pick_file():
 
     win = _window()
     if win is None:
-        return jsonify({"error": "No window available"}), 400
+        # Not running under pywebview (dev mode or browser) — return empty/null
+        # Frontend should handle gracefully (e.g., use fallback file uploader)
+        if allow_multiple:
+            return jsonify({"paths": []})
+        return jsonify({"path": None})
 
     import webview
     result = win.create_file_dialog(webview.OPEN_DIALOG, file_types=file_types, allow_multiple=allow_multiple)
@@ -258,7 +262,9 @@ def pick_file():
 def pick_folder():
     win = _window()
     if win is None:
-        return jsonify({"error": "No window available"}), 400
+        # Not running under pywebview (dev mode or browser) — return null path
+        # Frontend should fall back to text prompt or handle gracefully
+        return jsonify({"path": None})
 
     import webview
     result = win.create_file_dialog(webview.FOLDER_DIALOG)
@@ -279,7 +285,25 @@ def save_file_dialog():
 
     win = _window()
     if win is None:
-        return jsonify({"error": "No window available"}), 400
+        # Fallback: save to Downloads folder without native dialog
+        try:
+            downloads_dir = Path.home() / "Downloads"
+            downloads_dir.mkdir(parents=True, exist_ok=True)
+            save_path = downloads_dir / default_name
+            
+            # Handle filename conflicts
+            counter = 1
+            stem = save_path.stem
+            suffix = save_path.suffix
+            while save_path.exists():
+                save_path = downloads_dir / f"{stem}_{counter}{suffix}"
+                counter += 1
+            
+            with open(save_path, "wb") as f:
+                f.write(_b64.b64decode(image_b64))
+            return jsonify({"path": str(save_path), "status": "ok", "fallback": True})
+        except Exception as e:
+            return jsonify({"error": f"Failed to save file to Downloads: {e}"}), 500
 
     import webview
     result = win.create_file_dialog(
@@ -340,7 +364,16 @@ def download_file():
 
     win = _window()
     if win is None:
-        return jsonify({"error": "No window available"}), 400
+        # Fallback: trigger browser download via send_file
+        try:
+            return send_file(
+                source_path,
+                as_attachment=True,
+                download_name=default_name,
+                mimetype='application/octet-stream'
+            )
+        except Exception as e:
+            return jsonify({"error": f"Failed to download file: {e}"}), 500
 
     import webview
     result = win.create_file_dialog(webview.SAVE_DIALOG, save_filename=default_name, file_types=file_types)

@@ -177,10 +177,28 @@ export function SettingsTab({ capabilities }) {
             size="sm"
             className="flex-shrink-0"
             onClick={async () => {
+              let folderPath = null;
+
               try {
                 const data = await upscaleService.pickFolder();
-                if (data.path) setDataDir(data.path);
-              } catch (e) { console.error('Folder picker failed:', e); }
+                folderPath = data.path;
+              } catch (e) { 
+                console.error('Folder picker failed:', e); 
+              }
+
+              // If native picker not available (browser mode), fall back to text prompt
+              // (browser can't access filesystem paths directly due to sandbox)
+              if (!folderPath) {
+                folderPath = window.prompt(
+                  'Enter the full folder path for data storage\n' +
+                  '(e.g. C:\\Users\\You\\Documents or /home/user/data)',
+                  ''
+                );
+              }
+
+              if (folderPath && folderPath.trim()) {
+                setDataDir(folderPath.trim());
+              }
             }}
           >
             Browse

@@ -57,14 +57,28 @@ export function SubBar({
     }
     if (!startMonitor) return; // safety guard
 
+    let folderPath = null;
+
     try {
       const data = await upscaleService.pickFolder();
-      if (data.path) {
-        await startMonitor(data.path, selectedCar);
-      }
+      folderPath = data.path;
     } catch (e) {
       console.error('Folder picker failed:', e);
-      toast('Failed to open folder picker', 'error');
+    }
+
+    // If native picker not available (browser mode), fall back to text prompt
+    // (browser can't access filesystem paths directly due to sandbox)
+    if (!folderPath) {
+      folderPath = window.prompt(
+        'Enter the full folder path to monitor for auto-deploy\n' +
+        '(e.g. C:\\Users\\You\\Documents\\MyLiveries or /home/user/liveries)',
+        ''
+      );
+    }
+
+    // Start monitoring with the path
+    if (folderPath && folderPath.trim()) {
+      await startMonitor(folderPath.trim(), selectedCar);
     }
   }, [selectedCar, startMonitor, toast]);
   const selectedCarData = cars.find((c) => c.folder === selectedCar);

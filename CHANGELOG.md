@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.9.6-beta] — 2026-03-30
+
+### Added
+- **Raw mode** — New "raw" generation mode for advanced users: sends prompt + context directly to Gemini with zero system prompting (no UV mapping rules, no livery conventions, no wireframe guidance). Context and Prompt are concatenated as the final message. Preserves original image aspect ratio. Use for freeform concept art, textures, and experiments outside livery generation
+- **Helmet & Suit generation** — New "helmet" and "suit" modes in generate endpoint using fixed wireframes/diffuses from `/library/helmet/` and `/library/suit/`; auto-resolve gear assets from library on request
+- **Gear auto-deploy** — Helmet/suit generations auto-deploy to iRacing paint root (e.g., `PaintShop/helmet_custom.tga`) when customer_id is set; bypasses car folder resolution
+- **Raw mode UI** — Mode button alongside New/Modify; context is required in raw mode; wireframe + base upscaler disabled; warning banner explains zero-system-prompting behavior
+
+### Changed
+- **Car library reorganization** — Moved from `car_library/` to `library/cars/` for cleaner asset structure alongside `library/helmet/` and `library/suit/`; `LIBRARY_ROOT` path constant now used throughout
+- **Enhance prompt system instruction** — Replaced conversational prompt with direct critical directive: "CRITICAL: Your response must contain ONLY the enhanced prompt text — no preamble, no explanation, no headings..." ensures clean output without meta-commentary or structural wrapper text
+
+### Fixed
+- **File dialogs graceful fallback** — `/api/pick-file`, `/api/download-file`, and `/api/save-file` now gracefully handle missing pywebview window (dev/browser mode) instead of returning error. Download endpoint triggers browser file download via `send_file()` when pywebview unavailable
+- **Download button UX** — Updated to use backend `/api/download-file` endpoint instead of browser link download; works in both native (pywebview save dialog) and browser (automatic download) modes
+
+---
+
 ## [0.9.5-beta] — 2026-03-19
 
 ### Added
@@ -140,7 +158,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 -->
 
+[0.9.6-beta]: https://github.com/jamesdhooks/livery-ai-studio/releases/tag/v0.9.6-beta
+[0.9.5-beta]: https://github.com/jamesdhooks/livery-ai-studio/releases/tag/v0.9.5-beta
+[0.9.4-beta]: https://github.com/jamesdhooks/livery-ai-studio/releases/tag/v0.9.4-beta
 [0.9.3-beta]: https://github.com/jamesdhooks/livery-ai-studio/releases/tag/v0.9.3-beta
+[0.9.2-beta]: https://github.com/jamesdhooks/livery-ai-studio/releases/tag/v0.9.2-beta
+[0.9.1-beta]: https://github.com/jamesdhooks/livery-ai-studio/releases/tag/v0.9.1-beta
+[0.9.0-beta]: https://github.com/jamesdhooks/livery-ai-studio/releases/tag/v0.9.0-beta
 [0.9.2-beta]: https://github.com/jamesdhooks/livery-ai-studio/releases/tag/v0.9.2-beta
 [0.9.1-beta]: https://github.com/jamesdhooks/livery-ai-studio/releases/tag/v0.9.1-beta
 [0.9.0-beta]: https://github.com/jamesdhooks/livery-ai-studio/releases/tag/v0.9.0-beta

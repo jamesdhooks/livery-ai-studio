@@ -24,7 +24,7 @@ from server.cars import (
 )
 from server.config import get_user_cars_dir
 from server.deploy import get_documents_folder
-from server.extract import LIBRARY_DIR, extract_folder as extract_folder_batch, extract_from_zip, peek_zip
+from server.extract import LIBRARY_DIR, LIBRARY_ROOT, extract_folder as extract_folder_batch, extract_from_zip, peek_zip
 
 bp = Blueprint("api_cars", __name__)
 
@@ -377,6 +377,19 @@ def library_image(slug: str, filename: str):
         car_dir = base / slug
         if (car_dir / filename).exists():
             return send_from_directory(str(car_dir), filename)
+    return jsonify({"error": "Not found"}), 404
+
+
+@bp.route("/api/library/<gear_type>/<filename>")
+def library_gear_image(gear_type: str, filename: str):
+    """Serve helmet / suit wireframe and diffuse images from /library/<type>/."""
+    if gear_type not in ("helmet", "suit"):
+        return jsonify({"error": "Invalid type"}), 400
+    if filename not in ("wire.jpg", "diffuse.jpg"):
+        return jsonify({"error": "Invalid filename"}), 400
+    gear_dir = LIBRARY_ROOT / gear_type
+    if (gear_dir / filename).exists():
+        return send_from_directory(str(gear_dir), filename)
     return jsonify({"error": "Not found"}), 404
 
 

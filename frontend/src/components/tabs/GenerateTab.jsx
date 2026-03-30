@@ -16,6 +16,7 @@ import { useCarsContext } from '../../context/CarsContext';
 import { useGenerationPrefs } from '../../context/GenerationPrefsContext';
 import { useGenerateContext } from '../../context/GenerateContext';
 import { useUpscaleContext } from '../../context/UpscaleContext';
+import upscaleService from '../../services/UpscaleService';
 
 // ─── Icons ──────────────────────────────────────────────────────────────────
 
@@ -61,6 +62,34 @@ function IconGemini({ className = '' }) {
   );
 }
 
+function IconCode({ className = '' }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" />
+    </svg>
+  );
+}
+
+function IconHelmet({ className = '' }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M12 2C6.5 2 2 6.5 2 12c0 2.5 1 4.8 2.5 6.5h15c1.5-1.7 2.5-4 2.5-6.5C22 6.5 17.5 2 12 2z" />
+      <path d="M4 14h16" />
+      <path d="M7 18.5h10" />
+    </svg>
+  );
+}
+
+function IconSuit({ className = '' }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M12 2L8 6v4l-4 2v8h16v-8l-4-2V6l-4-4z" />
+      <path d="M8 22v-4h8v4" />
+      <circle cx="12" cy="10" r="1" />
+    </svg>
+  );
+}
+
 export function GenerateTab({
   // Only props that are truly local to App (injection state, navigation callbacks)
   capabilities,
@@ -93,10 +122,6 @@ export function GenerateTab({
   } = useGenerateContext();
   const { deploying, deploy } = useUpscaleContext();
 
-  const handleDeploy = useCallback(async (liveryPath, carName, customerId) => {
-    const cid = customerId || config?.customer_id;
-    await deploy(liveryPath, carName || selectedCar, cid);
-  }, [deploy, config, selectedCar]);
   // ── Mode ─────────────────────────────────────────────────────────────────
   // 'new' and 'modify' each have their own fully independent state bag.
   // `mode` is just the key that says which bag is currently displayed.
@@ -109,10 +134,13 @@ export function GenerateTab({
   const EMPTY_MODE_BAG = { prompt: '', context: '', referencePaths: [], referenceContext: '' };
 
   // Merge an incoming modeState from session with the local defaults.
-  // Ensures both 'new' and 'modify' bags always exist and have every required field.
+  // Ensures 'new', 'modify', 'raw', 'helmet', and 'suit' bags always exist with every required field.
   const sanitizeModeState = (incoming) => ({
     new:    { ...EMPTY_MODE_BAG, ...(incoming?.new    || {}) },
     modify: { ...EMPTY_MODE_BAG, ...(incoming?.modify || {}) },
+    raw:    { ...EMPTY_MODE_BAG, ...(incoming?.raw    || {}) },
+    helmet: { ...EMPTY_MODE_BAG, ...(incoming?.helmet || {}) },
+    suit:   { ...EMPTY_MODE_BAG, ...(incoming?.suit   || {}) },
   });
 
   // Initialize with empty state — restoration effect will populate from session
@@ -149,13 +177,25 @@ export function GenerateTab({
   // Derived flags — an override is active when the override path is non-empty
   const wireframeIsOverride = !!wireOverride;
   const baseIsOverride = !!baseOverride;
+  const isRawMode = mode === 'raw';
+  const isGearMode = mode === 'helmet' || mode === 'suit';
+
+  const handleDeploy = useCallback(async (liveryPath, carName, customerId) => {
+    const cid = customerId || config?.customer_id;
+    if (isGearMode) {
+      // Gear items deploy to paint root as helmet_<id>.tga / suit_<id>.tga
+      await upscaleService.deployGear(liveryPath, mode, cid);
+    } else {
+      await deploy(liveryPath, carName || selectedCar, cid);
+    }
+  }, [deploy, config, selectedCar, isGearMode, mode]);
 
   // Restore session state once it loads
   useEffect(() => {
     if (!session || sessionRestoredRef.current) return;
     sessionRestoredRef.current = true;
     
-    const restoredMode = session.last_mode === 'modify' ? 'modify' : 'new';
+    const restoredMode = ['modify', 'raw', 'helmet', 'suit'].includes(session.last_mode) ? session.last_mode : 'new';
     setMode(restoredMode);
     
     if (session.modeState) {
@@ -230,27 +270,34 @@ export function GenerateTab({
     }
   }, [lastResult, basePath]);
 
-  // Resolve effective wireframe path: override > library default
+  // Resolve effective wireframe path: gear mode > override > library default
   useEffect(() => {
-    if (wireOverride) {
+    if (isGearMode) {
+      setWireframePath(`/api/library/${mode}/wire.jpg`);
+    } else if (wireOverride) {
       setWireframePath(wireOverride);
     } else if (carWireUrl) {
       setWireframePath(carWireUrl);
     } else {
       setWireframePath('');
     }
-  }, [wireOverride, carWireUrl]);
+  }, [wireOverride, carWireUrl, isGearMode, mode]);
 
-  // Resolve effective base path: override > library default
+  // Resolve effective base path: gear mode > override > library default
+  // In raw mode, don't auto-load the diffuse texture — leave blank unless explicitly set.
   useEffect(() => {
-    if (baseOverride) {
+    if (isGearMode) {
+      setBasePath(baseOverride || `/api/library/${mode}/diffuse.jpg`);
+    } else if (isRawMode) {
+      setBasePath(baseOverride || '');
+    } else if (baseOverride) {
       setBasePath(baseOverride);
     } else if (carDiffuseUrl) {
       setBasePath(carDiffuseUrl);
     } else {
       setBasePath('');
     }
-  }, [baseOverride, carDiffuseUrl]);
+  }, [baseOverride, carDiffuseUrl, isRawMode, isGearMode, mode]);
 
   const handlePromptChange = (value) => {
     console.log('[FRONTEND_HANDLER] handlePromptChange called, value:', value.substring(0, 40));
@@ -369,7 +416,7 @@ export function GenerateTab({
     }
   };
 
-  const canGenerate = selectedCar && ms?.prompt?.trim() && !generating;
+  const canGenerate = (isGearMode || isRawMode || selectedCar) && ms?.prompt?.trim() && !generating;
 
   const handleGenerate = async () => {
     if (!canGenerate) return;
@@ -388,14 +435,18 @@ export function GenerateTab({
       prompt: finalPrompt,
       context: ms.context.trim(),
       model,
-      car_folder: selectedCar || '',
-      wireframe_path: wireframePath,
-      base_texture_path: mode === 'modify' || iterateEnabled ? basePath : '',
+      car_folder: isGearMode ? '' : (selectedCar || ''),
+      wireframe_path: isRawMode ? '' : wireframePath,
+      base_texture_path: isGearMode
+        ? (basePath || '')
+        : isRawMode
+          ? (basePath || '')
+          : (mode === 'modify' || iterateEnabled ? basePath : ''),
       reference_paths: ms.referencePaths,
       reference_context: ms.referenceContext.trim(),
       resolution_2k: model === 'pro' || is2K,
       upscale: autoUpscale && model === 'flash' && !is2K,
-      mode: iterateEnabled ? 'iterate' : mode,
+      mode: isRawMode ? 'raw' : isGearMode ? mode : (iterateEnabled ? 'iterate' : mode),
       customer_id: customerId,
       auto_deploy: !!customerId,
       estimatedCost: calculateCost(model, is2K, config),
@@ -437,7 +488,7 @@ export function GenerateTab({
 
   return (
     <div className="flex h-full overflow-hidden">
-      {!selectedCar ? (
+      {!selectedCar && !isGearMode ? (
         /* ── No-car empty state ─────────────────────────────────────────── */
         <div className="flex-1 flex flex-col items-center justify-center relative select-none overflow-hidden">
 
@@ -518,19 +569,24 @@ export function GenerateTab({
           <div className="flex flex-col gap-0.5">
             <div className="flex items-center gap-1">
               <label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Mode</label>
-              <InfoTooltip position="right" maxWidth={280} text="New: Start a fresh livery from scratch. Modify: Iterate on an existing livery — upload a base texture and describe changes." />
+              <InfoTooltip position="right" maxWidth={300} text="New: Start a fresh livery from scratch. Modify: Iterate on an existing livery. Raw: Send your prompt directly to Gemini with zero system prompting — for advanced users who want full control." />
             </div>
             <div className="flex rounded-lg border border-border-default overflow-hidden">
               {[
                 { id: 'new', label: 'New', icon: <IconPlus className="w-3.5 h-3.5" /> },
                 { id: 'modify', label: 'Modify', icon: <IconPencil className="w-3.5 h-3.5" /> },
+                { id: 'raw', label: 'Raw', icon: <IconCode className="w-3.5 h-3.5" /> },
+                { id: 'helmet', label: 'Helmet', icon: <IconHelmet className="w-3.5 h-3.5" /> },
+                { id: 'suit', label: 'Suit', icon: <IconSuit className="w-3.5 h-3.5" /> },
               ].map((m) => (
                 <button
                   key={m.id}
                   onClick={() => handleModeChange(m.id)}
                   className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-[13px] font-medium transition-all cursor-pointer ${
                     mode === m.id
-                      ? 'bg-accent/20 text-accent'
+                      ? (m.id === 'raw' ? 'bg-warning/15 text-warning'
+                        : isGearMode ? 'bg-purple-600/20 text-purple-400'
+                        : 'bg-accent/20 text-accent')
                       : 'bg-bg-input text-text-secondary hover:bg-bg-hover'
                   }`}
                 >
@@ -541,7 +597,49 @@ export function GenerateTab({
             </div>
           </div>
 
-          {/* Wireframe + Base texture — side by side */}
+          {/* Raw mode description banner */}
+          {isRawMode && (
+            <div className="flex items-start gap-2 px-3 py-2.5 rounded border border-warning/40 bg-warning/5">
+              <IconCode className="w-3.5 h-3.5 text-warning mt-0.5 flex-shrink-0" />
+              <p className="text-[11px] text-warning/90 leading-snug">
+                <strong className="text-warning">Raw mode</strong> — your prompt is sent directly to Gemini with no system instructions. No wireframe guidance, no UV mapping rules, no livery conventions. Use this for anything outside of livery generation — concept art, textures, experiments. Context and Prompt are concatenated as the final message.
+              </p>
+            </div>
+          )}
+
+          {/* Gear mode description banner */}
+          {isGearMode && (
+            <div className="flex items-start gap-2 px-3 py-2.5 rounded border border-purple-500/40 bg-purple-500/5">
+              {mode === 'helmet' ? <IconHelmet className="w-3.5 h-3.5 text-purple-400 mt-0.5 flex-shrink-0" /> : <IconSuit className="w-3.5 h-3.5 text-purple-400 mt-0.5 flex-shrink-0" />}
+              <p className="text-[11px] text-purple-300/90 leading-snug">
+                <strong className="text-purple-300">{mode === 'helmet' ? 'Helmet' : 'Suit'} mode</strong> — generates a{mode === 'helmet' ? ' helmet UV texture using a racing helmet template' : ' race suit UV texture using a driver suit template'}. No car selection needed. Deploy sends it to your <code className="font-mono text-purple-400/80">iRacing/paint/</code> folder as <code className="font-mono text-purple-400/80">{mode}_{'{'}your ID{'}'}.tga</code>.
+              </p>
+            </div>
+          )}
+
+          {/* Wireframe + Base texture — side by side (hidden in raw mode; raw shows base-only) */}
+          {isRawMode ? (
+            <FileUploader
+              label="Base Image (optional)"
+              tooltip="An optional image to include in the request — the AI will receive it alongside your prompt."
+              accept="image/*"
+              onUpload={handleBaseUpload}
+              onClear={baseIsOverride ? handleClearBase : null}
+              onBrowse={() => setBrowseCategory('base')}
+              currentPath={basePath}
+              previewUrl={
+                basePath
+                  ? baseIsOverride
+                    ? `/api/uploads/preview?path=${encodeURIComponent(basePath)}`
+                    : basePath
+                  : ''
+              }
+              placeholder="Drop image or click (optional)"
+              onHoverPreview={setHoverPreviewUrl}
+              onHoverPreviewEnd={() => setHoverPreviewUrl('')}
+              fixedHeight="h-32"
+            />
+          ) : (
           <div className="grid grid-cols-2 gap-2">
             <FileUploader
               label="Wireframe"
@@ -584,6 +682,8 @@ export function GenerateTab({
               fixedHeight="h-48"
             />
           </div>
+
+          )}
 
           {/* Reference images */}
           <div className="flex flex-col gap-1">
@@ -671,7 +771,7 @@ export function GenerateTab({
           {/* Context */}
           <div className="flex flex-col gap-1">
             <label className="text-[10px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-1">
-              Context (optional)
+              {isRawMode ? 'Context' : 'Context (optional)'}
               <InfoTooltip position="right" maxWidth={260} text="Additional background information that guides the AI without being part of the main prompt. Use it for consistent style rules such as 'always use matte finish' or sponsor guidelines." />
             </label>
             <textarea
@@ -816,7 +916,10 @@ export function GenerateTab({
           >
             <span className="flex items-center justify-center gap-1.5">
               <IconGemini className="w-4 h-4" />
-              {generating ? 'Generating…' : 'Generate Livery'}
+              {generating ? 'Generating…'
+                : mode === 'helmet' ? 'Generate Helmet'
+                : mode === 'suit' ? 'Generate Suit'
+                : 'Generate Livery'}
             </span>
           </Button>
         </div>
@@ -828,6 +931,7 @@ export function GenerateTab({
           imageUrl={activePreview}
           imagePath={lastResult?.livery_path}
           downloadName={`${selectedCar || 'livery'}.png`}
+          mode={mode}
           meta={lastResult ? [
             { label: 'Car', value: selectedCar || '—' },
             { label: 'Model', value: model === 'pro' ? 'Pro' : 'Flash', className: model === 'pro' ? 'text-accent-wine' : 'text-accent' },

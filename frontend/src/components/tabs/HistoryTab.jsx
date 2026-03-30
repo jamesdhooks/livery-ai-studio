@@ -4,7 +4,6 @@ import { LiveryDetailPanel } from '../common/LiveryDetailPanel';
 import { HistoryFilters } from '../common/HistoryFilters';
 import { formatTimestamp } from '../../utils/helpers';
 import upscaleService from '../../services/UpscaleService';
-import { getFilename } from '../../utils/helpers';
 import { useHistoryContext } from '../../context/HistoryContext';
 import { useCarsContext } from '../../context/CarsContext';
 import { useUpscaleContext } from '../../context/UpscaleContext';
@@ -40,6 +39,11 @@ export function HistoryTab({
   const onDeploy = useCallback((path, carFolder, _cid) => {
     deployTexture(path, carFolder, config?.customer_id);
   }, [deployTexture, config?.customer_id]);
+  const onDeployGear = useCallback((path, gearType) => {
+    upscaleService.deployGear(path, gearType, config?.customer_id)
+      .then(() => onNotify?.(`${gearType.charAt(0).toUpperCase() + gearType.slice(1)} deployed to iRacing!`, 'success'))
+      .catch((e) => onNotify?.(`Deploy failed: ${e.message}`, 'error'));
+  }, [config?.customer_id]);
   const onDeploySpec = useCallback((path, carFolder, _cid) => {
     deploySpec(path, carFolder, config?.customer_id);
   }, [deploySpec, config?.customer_id]);
@@ -104,6 +108,15 @@ export function HistoryTab({
           break;
         case 'iterate':
           matches = item.mode === 'iterate';
+          break;
+        case 'raw':
+          matches = item.mode === 'raw';
+          break;
+        case 'helmet':
+          matches = item.mode === 'helmet';
+          break;
+        case 'suit':
+          matches = item.mode === 'suit';
           break;
         case 'upscaled':
           matches = item.upscaled;
@@ -283,18 +296,24 @@ export function HistoryTab({
   const isSpecItem = selectedItem?.entry_type === 'spec' || selectedItem?.mode === 'spec';
   const isUpscaleItem = selectedItem?.entry_type === 'upscale';
   const isResampleItem = selectedItem?.entry_type === 'resample';
+  const isHelmetItem = selectedItem?.mode === 'helmet';
+  const isSuitItem = selectedItem?.mode === 'suit';
+  const isGearItem = isHelmetItem || isSuitItem;
 
   const typeLabel = isSpecItem ? 'Spec Map'
     : isUpscaleItem ? 'Upscaled'
     : isResampleItem ? 'Resampled'
+    : isHelmetItem ? 'Helmet'
+    : isSuitItem ? 'Suit'
     : 'Livery';
   const typeClass = isSpecItem ? 'text-success'
     : (isUpscaleItem || isResampleItem) ? 'text-accent-wine'
+    : isGearItem ? 'text-purple-400'
     : 'text-text-primary';
 
   const meta = selectedItem
     ? [
-        { label: 'Car', value: selectedItem.display_name || selectedItem.car_folder, onEdit: onUpdateItemCar ? () => setEditingCar(true) : undefined },
+        ...(!isGearItem ? [{ label: 'Car', value: selectedItem.display_name || selectedItem.car_folder, onEdit: onUpdateItemCar ? () => setEditingCar(true) : undefined }] : []),
         { label: 'Type', value: typeLabel, className: typeClass },
         { label: 'Model', value: selectedItem.model || '—', className: isProModel ? 'text-accent-wine' : 'text-accent' },
         { label: 'Resolution', value: selectedItem.resolution_2k ? '2K (2048×2048)' : '1K (1024×1024)', className: isProModel ? 'text-accent-wine/80' : 'text-accent/80' },
@@ -354,6 +373,7 @@ export function HistoryTab({
                     }
                   }}
                   onDeploy={onDeploy}
+                  onDeployGear={onDeployGear}
                   deploying={deploying}
                   onNotify={onNotify}
                 />
@@ -379,9 +399,11 @@ export function HistoryTab({
                 meta={meta}
                 onDeploy={isSpecItem
                   ? (onDeploySpec ? () => onDeploySpec?.(selectedItem.livery_path, selectedItem.car_folder, null) : undefined)
+                  : isGearItem
+                  ? () => onDeployGear?.(selectedItem.livery_path, selectedItem.mode)
                   : () => onDeploy?.(selectedItem.livery_path, selectedItem.car_folder, null)
                 }
-                deployLabel={isSpecItem ? 'Deploy Spec to iRacing' : 'Deploy to iRacing'}
+                deployLabel={isSpecItem ? 'Deploy Spec to iRacing' : isGearItem ? `Deploy ${typeLabel} to iRacing` : 'Deploy to iRacing'}
                 deploying={deploying}
                 onLoadAsBase={!isSpecItem && selectedItem.livery_path ? () => {
                   onLoadAsBase?.(selectedItem.livery_path);
@@ -651,9 +673,13 @@ export function HistoryTab({
   );
 }
 
-function HistoryCard({ item, selected, checked, selectMode, onClick, onDeploy, deploying, onNotify }) {
+function HistoryCard({ item, selected, checked, selectMode, onClick, onDeploy, onDeployGear, deploying, onNotify }) {
   const modelLabel = item.model?.includes('pro') ? 'Pro' : item.model?.includes('flash') ? 'Flash' : null;
   const modeLabel = item.mode === 'iterate' ? 'Iterate' : item.mode === 'modify' ? 'Modify' : null;
+  const isRawItem = item.mode === 'raw';
+  const isHelmetCard = item.mode === 'helmet';
+  const isSuitCard = item.mode === 'suit';
+  const isGearCard = isHelmetCard || isSuitCard;
   const isSpecItem = item.entry_type === 'spec' || item.mode === 'spec';
   const isUpscaleTabItem = item.entry_type === 'upscale';
   const isResampleTabItem = item.entry_type === 'resample';
@@ -722,6 +748,21 @@ function HistoryCard({ item, selected, checked, selectMode, onClick, onDeploy, d
               {modeLabel}
             </span>
           )}
+          {isRawItem && (
+            <span className="px-1 py-0.5 text-[8px] font-bold uppercase rounded text-white bg-warning/90">
+              Raw
+            </span>
+          )}
+          {isHelmetCard && (
+            <span className="px-1 py-0.5 text-[8px] font-bold uppercase rounded text-white bg-purple-600/80">
+              Helmet
+            </span>
+          )}
+          {isSuitCard && (
+            <span className="px-1 py-0.5 text-[8px] font-bold uppercase rounded text-white bg-purple-700/80">
+              Suit
+            </span>
+          )}
           {item.spec_maps?.length > 0 && (
             <span className="px-1 py-0.5 text-[8px] font-bold uppercase rounded text-white bg-success/50" title={`${item.spec_maps.length} spec map(s) linked`}>
               ◆{item.spec_maps.length}
@@ -751,7 +792,9 @@ function HistoryCard({ item, selected, checked, selectMode, onClick, onDeploy, d
             imageUrl={item.preview_url}
             imagePath={item.livery_path}
             downloadName={`${item.display_name || item.car_folder}.png`}
-            onDeploy={() => onDeploy(item.livery_path, item.car_folder)}
+            onDeploy={isGearCard
+              ? () => onDeployGear?.(item.livery_path, item.mode)
+              : () => onDeploy(item.livery_path, item.car_folder)}
             deploying={deploying}
             onNotify={onNotify}
           />
@@ -761,7 +804,9 @@ function HistoryCard({ item, selected, checked, selectMode, onClick, onDeploy, d
       {/* Info */}
       <div className="p-2 flex flex-col gap-0.5">
         <div className="text-[11px] font-medium text-text-primary truncate">
-          {item.display_name || item.car_folder}
+          {isGearCard
+            ? (isHelmetCard ? 'Helmet' : 'Suit')
+            : (item.display_name || item.car_folder)}
         </div>
         <div className="flex items-center justify-between">
           <div className="text-[10px] text-text-muted">

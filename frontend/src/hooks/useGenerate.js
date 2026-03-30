@@ -99,12 +99,14 @@ export function useGenerate({ onNotify, onTransaction, onError } = {}) {
 
     setGenerating(true);
     setError(null);
-    setStatus({ type: 'info', message: 'Generating livery…' });
+    const isRawMode = params.mode === 'raw';
+    const generatingText = isRawMode ? 'Generating Image…' : 'Generating livery…';
+    setStatus({ type: 'info', message: generatingText });
     startTimer();
 
     // Show initial "generating" toast with estimated cost
     const costText = params.estimatedCost != null ? ` · $${parseFloat(params.estimatedCost).toFixed(2)}` : '';
-    notify('info', `Generating livery…${costText}`);
+    notify('info', `${generatingText}${costText}`);
 
     // Fire estimated cost transaction immediately on start
     if (onTransaction && params.estimatedCost != null) {

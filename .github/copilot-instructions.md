@@ -46,7 +46,7 @@ livery-ai-studio/
 │   ├── deploy.py           # iRacing paint folder deployment
 │   ├── seedvr2.py          # SeedVR2 diffusion upscaling (optional)
 │   └── spending.py         # Persistent spending log (data/spending_log.json)
-├── car_library/            # 180+ pre-extracted car templates
+├── library/                # 180+ pre-extracted car templates
 ├── legacy/                 # Original vanilla JS/HTML/CSS (reference only)
 ├── config/                 # Config documentation
 ├── scripts/                # Utility script documentation
@@ -292,7 +292,7 @@ npm run build
 - Errors return `{"error": "message"}` with appropriate HTTP status codes
 - The `config.json` is always loaded fresh on API calls (no stale config)
 - File paths use `pathlib.Path` throughout
-- The `car_library/` directory is read-only (source of truth)
+- The `library/` directory is read-only (source of truth)
 - User car overrides go in `data/cars/`
 
 ## Git Conventions

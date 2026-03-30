@@ -32,7 +32,7 @@ from pathlib import Path
 from flask import Blueprint, jsonify, request
 
 from server.config import get_data_dir, get_liveries_dir, get_thumbnails_dir, load_config
-from server.deploy import deploy_livery, deploy_spec_livery, get_iracing_paint_dir, resolve_car_folder
+from server.deploy import deploy_livery, deploy_spec_livery, deploy_gear, get_iracing_paint_dir, resolve_car_folder
 
 TRASH_RETENTION_SECONDS = 86_400  # 1 day
 
@@ -560,6 +560,35 @@ def api_deploy_spec():
 
     try:
         dest = deploy_spec_livery(tga_path=tga_path, car_name=car_name, customer_id=customer_id)
+        return jsonify({"status": "ok", "deployed_to": str(dest)})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/api/deploy-gear", methods=["POST"])
+def api_deploy_gear():
+    """Deploy a helmet or suit TGA to the iRacing paint root folder.
+    Saves as helmet_<customer_id>.tga or suit_<customer_id>.tga.
+    """
+    data        = request.json or {}
+    tga_path    = (data.get("path") or "").strip()
+    gear_type   = (data.get("gear_type") or "").strip().lower()
+    customer_id = (data.get("customer_id") or "").strip()
+
+    if not tga_path:
+        return jsonify({"error": "No TGA path provided"}), 400
+    if not Path(tga_path).exists():
+        return jsonify({"error": f"TGA file not found: {tga_path}"}), 404
+    if gear_type not in ("helmet", "suit"):
+        return jsonify({"error": "gear_type must be 'helmet' or 'suit'"}), 400
+
+    config = load_config()
+    customer_id = customer_id or config.get("customer_id", "").strip()
+    if not customer_id:
+        return jsonify({"error": "No customer ID — set it in Settings"}), 400
+
+    try:
+        dest = deploy_gear(tga_path=tga_path, gear_type=gear_type, customer_id=customer_id)
         return jsonify({"status": "ok", "deployed_to": str(dest)})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
