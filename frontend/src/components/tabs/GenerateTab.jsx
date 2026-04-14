@@ -16,6 +16,7 @@ import { useCarsContext } from '../../context/CarsContext';
 import { useGenerationPrefs } from '../../context/GenerationPrefsContext';
 import { useGenerateContext } from '../../context/GenerateContext';
 import { useUpscaleContext } from '../../context/UpscaleContext';
+import { useToastContext } from '../../context/ToastContext';
 import upscaleService from '../../services/UpscaleService';
 
 // ─── Icons ──────────────────────────────────────────────────────────────────
@@ -114,13 +115,14 @@ export function GenerateTab({
     wireOverride, baseOverride, overridesLoading,
     setWireOverride, setBaseOverride, clearWireOverride, clearBaseOverride,
   } = useCarsContext();
-  const { genModel: model, genIs2K: is2K, genAutoUpscale: autoUpscale, setGenModel: onModelChange, setGenIs2K: onIs2KChange, setGenAutoUpscale: onAutoUpscaleChange } = useGenerationPrefs();
+  const { genModel: model, genIs2K: is2K, genAutoUpscale: autoUpscale, genRaw4K: raw4K, setGenModel: onModelChange, setGenIs2K: onIs2KChange, setGenAutoUpscale: onAutoUpscaleChange, setGenRaw4K: onRaw4KChange } = useGenerationPrefs();
   const {
     generating, elapsedSeconds, result: lastResult, status: generateStatus,
     generate: onGenerate, abort: onAbort, uploadFile: onUploadFile,
     browseUploads: onBrowseUploads, deleteUpload: onDeleteUpload, clearStatus: onClearStatus,
   } = useGenerateContext();
   const { deploying, deploy } = useUpscaleContext();
+  const { toast: onNotify } = useToastContext();
 
   // ── Mode ─────────────────────────────────────────────────────────────────
   // 'new' and 'modify' each have their own fully independent state bag.
@@ -446,6 +448,7 @@ export function GenerateTab({
       reference_context: ms.referenceContext.trim(),
       resolution_2k: model === 'pro' || is2K,
       upscale: autoUpscale && model === 'flash' && !is2K,
+      raw_4k: isRawMode && raw4K,
       mode: isRawMode ? 'raw' : isGearMode ? mode : (iterateEnabled ? 'iterate' : mode),
       customer_id: customerId,
       auto_deploy: !!customerId,
@@ -899,6 +902,21 @@ export function GenerateTab({
             </div>
           )}
 
+          {/* Raw mode 4K upscale toggle */}
+          {isRawMode && capabilities?.upscale_available && (
+            <div className="flex items-center justify-between">
+              <span className="text-[13px] text-warning/90 flex items-center gap-1">
+                4K upscale
+                <InfoTooltip 
+                  position="right" 
+                  maxWidth={280} 
+                  text={`After generating, runs ${config?.upscale_engine === 'seedvr2' ? 'SeedVR2' : 'Real-ESRGAN'} to upscale the result to ~4K (4096px longest side) while preserving the original aspect ratio.`}
+                />
+              </span>
+              <Toggle checked={raw4K} onChange={onRaw4KChange} id="raw4kUpscale" size="sm" />
+            </div>
+          )}
+
           {/* Progress bar (visible during generation) */}
           <GenerationProgress
             generating={generating}
@@ -967,7 +985,7 @@ export function GenerateTab({
             onNavigateToResample?.(lastResult.livery_path);
           } : undefined}
           generating={generating}
-          onNotify={() => {}} 
+          onNotify={onNotify}
           onSwitchTab={() => {}}
         />
       </div>

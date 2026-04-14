@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.9.7-beta] — 2026-04-14
+
+### Added
+
+### Changed
+- Release housekeeping.
+
+### Fixed
+
+---
+
 ## [0.9.6-beta] — 2026-03-30
 
 ### Added
@@ -158,13 +169,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 -->
 
+[0.9.7-beta]: https://github.com/jamesdhooks/livery-ai-studio/releases/tag/v0.9.7-beta
 [0.9.6-beta]: https://github.com/jamesdhooks/livery-ai-studio/releases/tag/v0.9.6-beta
 [0.9.5-beta]: https://github.com/jamesdhooks/livery-ai-studio/releases/tag/v0.9.5-beta
 [0.9.4-beta]: https://github.com/jamesdhooks/livery-ai-studio/releases/tag/v0.9.4-beta
 [0.9.3-beta]: https://github.com/jamesdhooks/livery-ai-studio/releases/tag/v0.9.3-beta
-[0.9.2-beta]: https://github.com/jamesdhooks/livery-ai-studio/releases/tag/v0.9.2-beta
-[0.9.1-beta]: https://github.com/jamesdhooks/livery-ai-studio/releases/tag/v0.9.1-beta
-[0.9.0-beta]: https://github.com/jamesdhooks/livery-ai-studio/releases/tag/v0.9.0-beta
 [0.9.2-beta]: https://github.com/jamesdhooks/livery-ai-studio/releases/tag/v0.9.2-beta
 [0.9.1-beta]: https://github.com/jamesdhooks/livery-ai-studio/releases/tag/v0.9.1-beta
 [0.9.0-beta]: https://github.com/jamesdhooks/livery-ai-studio/releases/tag/v0.9.0-beta

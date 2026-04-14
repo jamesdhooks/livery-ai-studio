@@ -18,11 +18,12 @@ class UpscaleService extends BaseService {
 
   /**
    * 4× upscale a livery using Real-ESRGAN (requires NVIDIA GPU).
-   * @param {string} sourcePath - Server-side path to the source TGA/PNG.
+   * @param {string} sourcePath   - Server-side path to the source TGA/PNG.
+   * @param {number} [targetSize] - Target size for the longest side (2048 or 4096). Default 2048.
    * @returns {Promise<{output_path: string}>} Path to the upscaled output file.
    */
-  async upscale(sourcePath) {
-    return this.post('/upscale', { path: sourcePath });
+  async upscale(sourcePath, targetSize = 2048) {
+    return this.post('/upscale', { path: sourcePath, target_size: targetSize });
   }
 
   /**

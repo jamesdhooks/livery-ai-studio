@@ -53,6 +53,9 @@ export function UpscaleTab({
       .catch(err => console.warn('Failed to fetch upscale status:', err));
   }, []);
 
+  // ── Upscale config ──────────────────────────────────────────────────────────
+  const [upscaleSize, setUpscaleSize] = useState(2048);
+
   // ── Resample config ───────────────────────────────────────────────────────
   const [downsampleSize, setDownsampleSize] = useState(1024);
   const [upsampleSize, setUpsampleSize]     = useState(2048);
@@ -80,6 +83,7 @@ export function UpscaleTab({
     if (!session) return;
     sessionRestoredRef.current = true;
     
+    if (session.upscale_size !== undefined) setUpscaleSize(session.upscale_size);
     if (session.resample_config) {
       const cfg = session.resample_config;
       if (cfg.downsampleSize !== undefined) setDownsampleSize(cfg.downsampleSize);
@@ -100,6 +104,11 @@ export function UpscaleTab({
       setSourcePreview(`/api/uploads/preview?path=${encodeURIComponent(savedPath)}`);
     }
   }, [session?.upscale_source_path]);
+
+  // Persist upscale size to session
+  React.useEffect(() => {
+    debouncedSave('upscale_size', upscaleSize, 500);
+  }, [upscaleSize, debouncedSave]);
 
   // Persist resample config to session when any value changes
   React.useEffect(() => {
@@ -204,7 +213,7 @@ export function UpscaleTab({
         noiseAmount,
       });
     } else {
-      await onUpscale?.(sourcePath);
+      await onUpscale?.(sourcePath, upscaleSize);
     }
   };
 
@@ -263,11 +272,22 @@ export function UpscaleTab({
 
           {/* Mode description + resample config */}
           {mode === 'upscale' ? (
-            <div>
-              <h2 className="text-sm font-semibold text-text-primary mb-1">Upscale to 2048px (longest side)</h2>
-              <p className="text-[11px] text-text-muted">
-                Upscales a livery to 2048px on the longest side using your configured engine, preserving aspect ratio. No API cost.
-              </p>
+            <div className="flex flex-col gap-3">
+              <div>
+                <h2 className="text-sm font-semibold text-text-primary mb-1">Upscale Configuration</h2>
+                <p className="text-[11px] text-text-muted">
+                  Upscales a livery using your configured engine, preserving aspect ratio. No API cost.
+                </p>
+              </div>
+              <ResampleSizeSlider
+                label="Upscale to"
+                value={upscaleSize}
+                onChange={setUpscaleSize}
+                min={2048}
+                max={4096}
+                tip={preferredEngine === 'seedvr2' ? '4K requires significant VRAM' : 'Target output size (longest side)'}
+                vramWarning={preferredEngine === 'seedvr2'}
+              />
             </div>
           ) : (
             <div className="flex flex-col gap-3">

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { ImageActionTray } from '../common/ImageActionTray';
 import { LiveryDetailPanel } from '../common/LiveryDetailPanel';
 import { HistoryFilters } from '../common/HistoryFilters';
-import { formatTimestamp } from '../../utils/helpers';
+import { formatTimestamp, getFilename } from '../../utils/helpers';
 import upscaleService from '../../services/UpscaleService';
 import { useHistoryContext } from '../../context/HistoryContext';
 import { useCarsContext } from '../../context/CarsContext';

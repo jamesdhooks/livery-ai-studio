@@ -78,17 +78,18 @@ def _resize_aspect_aware(image: Image.Image, target_size: int) -> Image.Image:
     return image.resize((new_w, new_h), Image.LANCZOS)
 
 
-def upscale_to_2048(image: Image.Image, tile: int = 512) -> Image.Image:
+def upscale_to_2048(image: Image.Image, tile: int = 512, target_size: int = 2048) -> Image.Image:
     """
-    Upscale `image` using Real-ESRGAN x4, then resize to 2048px (longest side).
+    Upscale `image` using Real-ESRGAN x4, then resize to target_size px (longest side).
     Aspect ratio is preserved — target_size becomes the length of the longest dimension.
 
     Args:
         image: PIL Image (any mode; will be converted to RGB internally)
         tile:  Tile size for VRAM-safe inference. Reduce to 256 on <8GB GPUs.
+        target_size: Target pixel size for the longest side (default 2048).
 
     Returns:
-        PIL Image in RGBA mode with longest side = 2048px (aspect ratio preserved).
+        PIL Image in RGBA mode with longest side = target_size px (aspect ratio preserved).
 
     Raises:
         RuntimeError: if Real-ESRGAN or weights are not available.
@@ -184,15 +185,15 @@ def upscale_to_2048(image: Image.Image, tile: int = 512) -> Image.Image:
     upscaled = Image.fromarray(output_rgb)
     print(f"[upscale] Upscaled size: {upscaled.size}")
 
-    # Resize to 2048px on longest side (aspect ratio aware)
-    upscaled = _resize_aspect_aware(upscaled, 2048)
-    print(f"[upscale] Final size (longest side = 2048): {upscaled.size}")
+    # Resize to target_size on longest side (aspect ratio aware)
+    upscaled = _resize_aspect_aware(upscaled, target_size)
+    print(f"[upscale] Final size (longest side = {target_size}): {upscaled.size}")
 
     result = upscaled.convert("RGBA")
 
     # Re-apply original alpha if image had one (also aspect-aware)
     if has_alpha:
-        alpha_resized = _resize_aspect_aware(alpha, 2048)
+        alpha_resized = _resize_aspect_aware(alpha, target_size)
         result.putalpha(alpha_resized)
 
     return result

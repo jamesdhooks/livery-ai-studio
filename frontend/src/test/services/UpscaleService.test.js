@@ -19,6 +19,7 @@ describe('UpscaleService', () => {
     const result = await upscaleService.upscale('/data/liveries/123.tga');
     expect(upscaleService.post).toHaveBeenCalledWith('/upscale', {
       path: '/data/liveries/123.tga',
+      target_size: 2048,
     });
     expect(result).toEqual(mockResult);
   });

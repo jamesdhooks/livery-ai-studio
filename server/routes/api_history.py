@@ -661,12 +661,15 @@ def api_deploy_default():
 
 @bp.route("/api/upscale", methods=["POST"])
 def api_upscale():
-    """Upscale directly to 2048×2048 using the configured engine (no downres step)."""
+    """Upscale using the configured engine (no downres step)."""
     from PIL import Image
     from server.config import load_config
 
     data        = request.json or {}
     source_path = (data.get("path") or "").strip()
+    target_size = int(data.get("target_size", 2048))
+    if target_size not in (2048, 4096):
+        target_size = 2048
 
     if not source_path or not Path(source_path).exists():
         return jsonify({"error": "Source file not found"}), 404
@@ -675,7 +678,7 @@ def api_upscale():
     engine = config.get("upscale_engine", "realesrgan")
 
     try:
-        print(f"[upscale] Loading {source_path} (engine={engine})")
+        print(f"[upscale] Loading {source_path} (engine={engine}, target_size={target_size})")
         image = Image.open(source_path)
 
         if engine == "seedvr2":
@@ -684,12 +687,12 @@ def api_upscale():
                 return jsonify({"error": "SeedVR2 is not installed. Re-launch with start.bat --seedvr"}), 400
             use_gguf = config.get("seedvr2_use_gguf", True)
             use_multi_gpu = config.get("seedvr2_multi_gpu", False)
-            result_image = upscale_direct(image, use_gguf=use_gguf, use_multi_gpu=use_multi_gpu)
+            result_image = upscale_direct(image, use_gguf=use_gguf, use_multi_gpu=use_multi_gpu, target_size=target_size)
         else:
             from server.upscale import upscale_to_2048, is_available as realesrgan_available
             if not realesrgan_available():
                 return jsonify({"error": "Real-ESRGAN is not installed. Re-launch with start.bat --realesrgan"}), 400
-            result_image = upscale_to_2048(image)
+            result_image = upscale_to_2048(image, target_size=target_size)
 
         src           = Path(source_path)
         liveries_dir  = get_liveries_dir()
@@ -724,6 +727,7 @@ def api_upscale():
             meta["entry_type"]     = "upscale"
             meta["upscaled"]       = True
             meta["upscale_engine"] = engine
+            meta["upscale_size"]   = target_size
             meta["source_path"]    = str(src)  # legacy compat
 
             # Bidirectional link to source livery

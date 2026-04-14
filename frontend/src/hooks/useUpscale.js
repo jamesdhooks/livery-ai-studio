@@ -70,7 +70,7 @@ export function useUpscale({ onNotify, onError, onUpscaleComplete } = {}) {
     }
   }, [onNotify]);
 
-  const upscale = useCallback(async (sourcePath) => {
+  const upscale = useCallback(async (sourcePath, targetSize = 2048) => {
     if (upscaling) return null;
     
     setUpscaling(true);
@@ -82,7 +82,7 @@ export function useUpscale({ onNotify, onError, onUpscaleComplete } = {}) {
     notify('info', 'Upscaling livery (this may take 30-60 seconds)…');
 
     try {
-      const data = await upscaleService.upscale(sourcePath);
+      const data = await upscaleService.upscale(sourcePath, targetSize);
       console.log('[useUpscale] Response received:', {
         has_preview_b64: !!data.preview_b64,
         has_full_res_b64: !!data.full_res_b64,

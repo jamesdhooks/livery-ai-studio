@@ -529,6 +529,7 @@ def generate_livery(
     car_display: str = "",
     upscale: bool = False,
     resolution_2k: bool = True,
+    raw_4k: bool = False,
     # Legacy compat — single reference_path still accepted
     reference_path: str | None = None,
 ) -> str:
@@ -663,7 +664,33 @@ def generate_livery(
     # Raw mode: preserve the original aspect ratio — no forced resize
     # (raw mode is for freeform generation, not iRacing UV textures)
     upscale_succeeded = False
-    if mode == "raw":
+    if mode == "raw" and raw_4k:
+        print(f"[generate_livery] Raw mode 4K — upscaling {generated_image.size} to 4096px longest side")
+        try:
+            from server.config import load_config as _load_config
+            _cfg = _load_config()
+            _engine = _cfg.get("upscale_engine", "realesrgan")
+            if _engine == "seedvr2":
+                from server.seedvr2 import upscale_direct, is_available as seedvr2_available
+                if seedvr2_available():
+                    generated_image = upscale_direct(generated_image, target_size=4096,
+                                                     use_gguf=_cfg.get("seedvr2_use_gguf", True),
+                                                     use_multi_gpu=_cfg.get("seedvr2_multi_gpu", False))
+                    upscale_succeeded = True
+                    print("[generate_livery] SeedVR2 raw 4K upscale succeeded")
+                else:
+                    print("[generate_livery] WARNING: raw_4k requested but SeedVR2 not available")
+            else:
+                from server.upscale import upscale_to_2048, is_available
+                if is_available():
+                    generated_image = upscale_to_2048(generated_image, target_size=4096)
+                    upscale_succeeded = True
+                    print("[generate_livery] Real-ESRGAN raw 4K upscale succeeded")
+                else:
+                    print("[generate_livery] WARNING: raw_4k requested but Real-ESRGAN not available")
+        except Exception as e:
+            print(f"[generate_livery] ERROR: Raw 4K upscale failed ({e}) — keeping original size")
+    elif mode == "raw":
         print(f"[generate_livery] Raw mode — keeping original size {generated_image.size}")
     elif upscale:
         try:

@@ -15,6 +15,7 @@ export function GenerationPrefsProvider({ children }) {
   const [genModel, setGenModel] = useState('pro');
   const [genIs2K, setGenIs2K] = useState(false);
   const [genAutoUpscale, setGenAutoUpscale] = useState(false);
+  const [genRaw4K, setGenRaw4K] = useState(false);
 
   // Restore from session (once on load)
   const restoredRef = useRef(false);
@@ -25,7 +26,7 @@ export function GenerationPrefsProvider({ children }) {
       setGenModel(session.last_model);
     }
     if (session.last_is_2k === true) setGenIs2K(true);
-     
+    if (session.last_raw_4k === true) setGenRaw4K(true);
   }, [session]);
 
   const handleModelChange = useCallback((m) => {
@@ -42,13 +43,20 @@ export function GenerationPrefsProvider({ children }) {
     setGenAutoUpscale(v);
   }, []);
 
+  const handleRaw4KChange = useCallback((v) => {
+    setGenRaw4K(v);
+    saveSession({ last_raw_4k: v });
+  }, [saveSession]);
+
   const value = {
     genModel,
     genIs2K,
     genAutoUpscale,
+    genRaw4K,
     setGenModel: handleModelChange,
     setGenIs2K: handleIs2KChange,
     setGenAutoUpscale: handleAutoUpscaleChange,
+    setGenRaw4K: handleRaw4KChange,
   };
 
   return (
@@ -60,7 +68,7 @@ export function GenerationPrefsProvider({ children }) {
 
 /**
  * useGenerationPrefs — returns generation preference state:
- *   { genModel, genIs2K, genAutoUpscale, setGenModel, setGenIs2K, setGenAutoUpscale }
+ *   { genModel, genIs2K, genAutoUpscale, genRaw4K, setGenModel, setGenIs2K, setGenAutoUpscale, setGenRaw4K }
  */
 export function useGenerationPrefs() {
   const ctx = useContext(GenerationPrefsContext);

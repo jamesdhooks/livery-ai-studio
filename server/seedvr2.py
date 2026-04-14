@@ -111,22 +111,23 @@ def resample(image: Image.Image, use_gguf: bool = True, use_multi_gpu: bool = Fa
     return _run_seedvr2(image, downres=False, use_gguf=use_gguf, use_multi_gpu=use_multi_gpu, target_size=target_size)
 
 
-def upscale_direct(image: Image.Image, use_gguf: bool = True, use_multi_gpu: bool = False) -> Image.Image:
+def upscale_direct(image: Image.Image, use_gguf: bool = True, use_multi_gpu: bool = False, target_size: int = 2048) -> Image.Image:
     """
     Upscale an image directly using SeedVR2 without downresizing first.
-    Passes the image at its original resolution straight to SeedVR2 → 2048×2048.
+    Passes the image at its original resolution straight to SeedVR2.
 
     Args:
         image: PIL Image (any mode; will be converted to RGB internally).
         use_gguf: If True, use the GGUF quantized model for lower VRAM usage.
+        target_size: Target output resolution (default 2048).
 
     Returns:
-        2048×2048 PIL Image in RGBA mode.
+        PIL Image in RGBA mode at target resolution.
 
     Raises:
         RuntimeError: if SeedVR2 is not available or the CLI fails.
     """
-    return _run_seedvr2(image, downres=False, use_gguf=use_gguf, use_multi_gpu=use_multi_gpu)
+    return _run_seedvr2(image, downres=False, use_gguf=use_gguf, use_multi_gpu=use_multi_gpu, target_size=target_size)
 
 
 def _run_seedvr2(image: Image.Image, downres: bool = True, use_gguf: bool = True, use_multi_gpu: bool = False, target_size: int = 2048) -> Image.Image:

@@ -113,6 +113,7 @@ def api_generate():
     auto_deploy         = data.get("auto_deploy", True)
     mode                = data.get("mode", "new")
     upscale             = data.get("upscale_result", False) and mode not in ("raw", *GEAR_MODES)
+    raw_4k              = data.get("raw_4k", False) and mode == "raw"
     is_gear             = mode in GEAR_MODES  # helmet / suit
 
     # Helmet / suit: auto-resolve wire + diffuse from /library/<mode>/
@@ -132,7 +133,7 @@ def api_generate():
     print(f"[GENERATE] prompt={prompt[:50]}")
     print(f"[GENERATE] wireframe_path={wireframe_path}")
     print(f"[GENERATE] base_texture_path={base_texture_path}")
-    print(f"[GENERATE] mode={mode}, car_name={car_name}, auto_deploy={auto_deploy}")
+    print(f"[GENERATE] mode={mode}, car_name={car_name}, auto_deploy={auto_deploy}, raw_4k={raw_4k}")
 
     # Validation
     if not prompt:
@@ -174,6 +175,7 @@ def api_generate():
             car_display=car_display,
             upscale=upscale,
             resolution_2k=resolution_2k if use_fast else True,
+            raw_4k=raw_4k,
         )
 
         # Unpack result: (output_path, conversation_log, upscale_succeeded)
@@ -249,6 +251,7 @@ def api_generate():
             "customer_id":          customer_id,
             "auto_deploy":          auto_deploy,
             "upscaled":             upscale_succeeded,
+            "raw_4k":               raw_4k,
             "generated_at":         ts.isoformat(timespec="seconds"),
             "api_requests":         1,
         }

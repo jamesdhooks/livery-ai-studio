@@ -119,6 +119,21 @@ export function LiveryDetailPanel({
 
   const { containerRef, transform, isZoomed, handlers: zoomHandlers } = useZoomPan({ imageUrl });
 
+  const fallbackCopyText = (text) => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '-1000px';
+    ta.style.left = '-1000px';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const copied = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return copied;
+  };
+
   const handleCopy = async () => {
     if (!imageUrl) return;
     
@@ -128,9 +143,10 @@ export function LiveryDetailPanel({
         const res = await fetch(imageUrl);
         const blob = await res.blob();
         
-        // Try clipboard API if available
-        if (navigator.clipboard?.write) {
-          await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+        // Prefer full image copy when ClipboardItem is available.
+        if (navigator.clipboard?.write && typeof window.ClipboardItem !== 'undefined') {
+          const mimeType = blob.type || 'image/png';
+          await navigator.clipboard.write([new window.ClipboardItem({ [mimeType]: blob })]);
           onNotify?.('Image copied to clipboard', 'success');
           return;
         }
@@ -138,14 +154,23 @@ export function LiveryDetailPanel({
         console.warn('Image blob copy failed:', e);
       }
       
-      // Fallback: try clipboard writeText with URL
+      const absoluteUrl = imageUrl.startsWith('data:')
+        ? imageUrl
+        : new URL(imageUrl, window.location.href).href;
+
+      // Fallback: try modern text clipboard API.
       if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(imageUrl);
+        await navigator.clipboard.writeText(absoluteUrl);
+        onNotify?.('Image link copied to clipboard', 'success');
+        return;
+      }
+
+      // Final fallback for restricted webview/security contexts.
+      if (fallbackCopyText(absoluteUrl)) {
         onNotify?.('Image link copied to clipboard', 'success');
         return;
       }
       
-      // Last resort: no clipboard API available
       onNotify?.('Clipboard not available in this context', 'warning');
     } catch (e) {
       console.error('Copy failed:', e);
