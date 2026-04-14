@@ -46,10 +46,13 @@ If no bump type is provided, default to `patch` and keep `-beta` suffix.
 - Ensure both match exactly.
 
 4. Update changelog
+- Run `git diff <prev_tag>..HEAD --name-only` and `git diff <prev_tag>..HEAD` on changed source files to understand what actually changed.
 - Insert a new top section at the top of `CHANGELOG.md`:
 	- Header: `## [X.Y.Z-beta] — YYYY-MM-DD`
-	- Include `### Added`, `### Changed`, `### Fixed` sections.
-	- If no user-provided notes exist, add `- Release housekeeping.` under `### Changed`.
+	- Include `### Added`, `### Changed`, `### Fixed` sections **populated with real bullet points** derived from the diff and any notes the user supplied.
+	- Do NOT leave any section empty or write placeholder text like "Release housekeeping." unless there is genuinely nothing to report.
+	- Omit sections that have no entries rather than leaving them blank.
+	- Write bullets in the project's established style: `**Feature name** — concise description of what/why.`
 - Add/update the bottom link reference:
 	- `[X.Y.Z-beta]: https://github.com/jamesdhooks/livery-ai-studio/releases/tag/vX.Y.Z-beta`
 - Avoid duplicate identical link-reference lines.

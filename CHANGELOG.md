@@ -10,11 +10,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.9.7-beta] — 2026-04-14
 
 ### Added
+- **Raw mode 4K upscale toggle** — New toggle in Generate tab (Raw mode only, when a GPU engine is available): after generation runs Real-ESRGAN or SeedVR2 to upscale the raw output to ~4096px on the longest side, preserving aspect ratio. Toggle state persists across sessions via `last_raw_4k` in session storage
+- **Configurable upscale target size** — Upscale tab now shows a size slider (2048–4096px) instead of always targeting 2048px; persists as `upscale_size` in session. Backend `/api/upscale` accepts `target_size` (2048 or 4096) and passes it through to Real-ESRGAN and SeedVR2 engines
+- **Beta release skill** — Added `.github/skills/beta-release-flow/SKILL.md`: a reusable agent workflow skill that verifies build/tests, bumps the beta version, updates CHANGELOG, commits all pending changes, and creates/pushes the next `vX.Y.Z-beta` tag
 
 ### Changed
-- Release housekeeping.
+- **Upscale tab UI** — "Upscale to 2048px" section replaced with "Upscale Configuration" heading and a `ResampleSizeSlider` component (2048–4096px), matching the resample tab's UX pattern
+- **`upscale_to_2048()` backend** — Renamed semantically; now accepts a `target_size` parameter (default 2048) so the same function handles both 2K and 4K output. Alpha channel re-application also uses `target_size`
+- **`upscale_direct()` / SeedVR2** — `upscale_direct()` now accepts `target_size` parameter; plumbed through all call sites including raw-mode generation and `/api/upscale` endpoint
+- **`/api/upscale` endpoint** — Accepts `target_size` in request body (validated to 2048 or 4096); stores `upscale_size` in sidecar JSON for history
 
 ### Fixed
+- **Copy button on Generate tab preview** — Image copy/download action row was silently swallowing all notifications because `onNotify` was wired to a no-op `() => {}`. Now correctly uses `useToastContext` so copy/download/deploy toasts show in the Generate tab
+- **Clipboard copy in webview** — Copy handler now guards `ClipboardItem` availability with `typeof window.ClipboardItem !== 'undefined'` before calling `.write()`, adds a `document.execCommand('copy')` fallback for restricted contexts, and builds an absolute URL before writing text to the clipboard
 
 ---
 
