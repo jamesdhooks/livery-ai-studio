@@ -78,6 +78,5 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: "Livery AI Studio v${{ steps.version.outputs.version }}"
           body_path: CHANGELOG.md
-          draft: true          # Set to false to publish immediately
-          prerelease: false
+          prerelease: true
           files: ${{ env.ZIP_PATH }}
